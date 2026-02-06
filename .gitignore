@@ -1,0 +1,26 @@
+# IDE
+.kiro
+.claude
+
+# Virt Env
+.venv
+
+# Caches
+__pycache__
+.pytest_cache
+.ruff_cache
+.mypy_cache
+
+# Build
+dist
+build
+*.egg-info
+
+# Coverage
+.coverage
+htmlcov/
+coverage.xml
+
+# OS
+.DS_Store
+Thumbs.db
