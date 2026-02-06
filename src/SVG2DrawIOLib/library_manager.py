@@ -161,8 +161,6 @@ class LibraryManager:
                         unique_name = f"{base_name}_{counter}"
 
                     # Create new icon with unique name
-                    from SVG2DrawIOLib.models import DrawIOIcon
-
                     unique_icon = DrawIOIcon(
                         name=unique_name,
                         xml_data=new_icon.xml_data,
