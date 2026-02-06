@@ -175,3 +175,80 @@ class TestSVGProcessor:
         icon = processor.process_svg_file(sample_svg_file)
         assert icon.name == "test_icon"
         assert isinstance(icon.xml_data, bytes)
+
+    def test_add_css_classes_no_root(self, processor: SVGProcessor) -> None:
+        """Test add_css_classes with tree that has no root."""
+        # Create a tree with None root (edge case)
+        tree = ET.ElementTree()
+        with pytest.raises(ValueError, match="SVG tree has no root element"):
+            processor.add_css_classes(tree)
+
+    def test_add_css_classes_no_matching_elements(
+        self, processor: SVGProcessor, tmp_path: Path
+    ) -> None:
+        """Test add_css_classes when no elements match the tag."""
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50">
+    <rect x="10" y="10" width="80" height="30"/>
+</svg>"""
+        svg_file = tmp_path / "test.svg"
+        svg_file.write_text(svg_content)
+
+        options = SVGProcessingOptions(add_css=True, css_tag="path")
+        processor = SVGProcessor(options)
+
+        tree = processor.load_svg(svg_file)
+        modified = processor.add_css_classes(tree)
+
+        # Should not add style element when no matching elements
+        root = modified.getroot()
+        styles = list(root.iter("style"))
+        assert len(styles) == 0
+
+    def test_get_svg_dimensions_no_root(self, processor: SVGProcessor) -> None:
+        """Test get_svg_dimensions with tree that has no root."""
+        tree = ET.ElementTree()
+        result = processor.get_svg_dimensions(tree)
+        assert result is None
+
+    def test_calculate_dimensions_no_svg_dims(
+        self, processor: SVGProcessor, tmp_path: Path
+    ) -> None:
+        """Test calculate_dimensions when SVG has no dimensions."""
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg">
+    <path d="M10,10 L90,10"/>
+</svg>"""
+        svg_file = tmp_path / "test.svg"
+        svg_file.write_text(svg_content)
+
+        tree = processor.load_svg(svg_file)
+        dims = processor.calculate_dimensions(tree, max_dimension=64)
+
+        # Should use square dimensions when aspect ratio can't be determined
+        assert dims.width == 64
+        assert dims.height == 64
+
+    def test_calculate_dimensions_zero_height(
+        self, processor: SVGProcessor, tmp_path: Path
+    ) -> None:
+        """Test calculate_dimensions when SVG has zero height."""
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 0">
+    <path d="M10,10 L90,10"/>
+</svg>"""
+        svg_file = tmp_path / "test.svg"
+        svg_file.write_text(svg_content)
+
+        tree = processor.load_svg(svg_file)
+        dims = processor.calculate_dimensions(tree, max_dimension=50)
+
+        # Should use square dimensions when height is zero
+        assert dims.width == 50
+        assert dims.height == 50
+
+    def test_svg_to_data_uri_no_root(self, processor: SVGProcessor) -> None:
+        """Test svg_to_data_uri with tree that has no root."""
+        tree = ET.ElementTree()
+        with pytest.raises(ValueError, match="SVG tree has no root element"):
+            processor.svg_to_data_uri(tree)

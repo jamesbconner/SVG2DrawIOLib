@@ -213,3 +213,86 @@ class TestLibraryManager:
 
         names = manager.list_icons(output)
         assert names == []
+
+    def test_add_icons_with_add_duplicates(
+        self, manager: LibraryManager, sample_icons: list[DrawIOIcon], tmp_path: Path
+    ) -> None:
+        """Test adding duplicate icons with modified names."""
+        output = tmp_path / "test_library.xml"
+        manager.create_library(sample_icons, output)
+
+        # Try to add duplicate with add_duplicates=True
+        duplicate = DrawIOIcon(
+            name="icon_a",
+            xml_data=b"new_data",
+            dimensions=SVGDimensions(width=100, height=100),
+        )
+
+        metadata = manager.add_icons_to_library(output, [duplicate], add_duplicates=True)
+
+        # Should have 4 icons now (original 3 + icon_a_2)
+        assert metadata.icon_count == 4
+
+        # Check that icon_a_2 was created
+        loaded_icons = manager.load_library(output)
+        names = [icon.name for icon in loaded_icons]
+        assert "icon_a" in names
+        assert "icon_a_2" in names
+
+        # Original icon_a should be unchanged
+        icon_a = next(icon for icon in loaded_icons if icon.name == "icon_a")
+        assert icon_a.xml_data == b"data_a"
+
+        # icon_a_2 should have the new data
+        icon_a_2 = next(icon for icon in loaded_icons if icon.name == "icon_a_2")
+        assert icon_a_2.xml_data == b"new_data"
+
+    def test_add_icons_with_multiple_duplicates(
+        self, manager: LibraryManager, sample_icons: list[DrawIOIcon], tmp_path: Path
+    ) -> None:
+        """Test adding multiple duplicates creates icon_2, icon_3, etc."""
+        output = tmp_path / "test_library.xml"
+        manager.create_library(sample_icons, output)
+
+        # Add same icon multiple times with add_duplicates=True
+        duplicates = [
+            DrawIOIcon(
+                name="icon_a",
+                xml_data=b"data_v2",
+                dimensions=SVGDimensions(width=100, height=100),
+            ),
+            DrawIOIcon(
+                name="icon_a",
+                xml_data=b"data_v3",
+                dimensions=SVGDimensions(width=100, height=100),
+            ),
+        ]
+
+        metadata = manager.add_icons_to_library(output, duplicates, add_duplicates=True)
+
+        # Should have 5 icons now (original 3 + icon_a_2 + icon_a_3)
+        assert metadata.icon_count == 5
+
+        loaded_icons = manager.load_library(output)
+        names = [icon.name for icon in loaded_icons]
+        assert "icon_a" in names
+        assert "icon_a_2" in names
+        assert "icon_a_3" in names
+
+    def test_load_library_with_parse_error(self, manager: LibraryManager, tmp_path: Path) -> None:
+        """Test loading a library with XML parse errors."""
+        invalid = tmp_path / "invalid.xml"
+        invalid.write_text("<mxlibrary>not valid xml")
+
+        with pytest.raises(ValueError, match="Invalid library file"):
+            manager.load_library(invalid)
+
+    def test_load_library_with_json_decode_error(
+        self, manager: LibraryManager, tmp_path: Path
+    ) -> None:
+        """Test loading a library with invalid JSON content."""
+        invalid = tmp_path / "invalid.xml"
+        invalid.write_text("<mxlibrary>not valid json</mxlibrary>")
+
+        with pytest.raises(ValueError, match="Invalid library format"):
+            manager.load_library(invalid)

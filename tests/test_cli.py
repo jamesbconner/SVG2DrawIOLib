@@ -690,3 +690,190 @@ class TestListCommand:
 
         result = runner.invoke(cli, ["list", str(library)])
         assert result.exit_code != 0
+
+
+class TestCreateCommandEdgeCases:
+    """Additional tests for create command edge cases."""
+
+    def test_create_with_only_width(
+        self, runner: CliRunner, sample_svg: Path, tmp_path: Path
+    ) -> None:
+        """Test create with only --width specified (should warn and use defaults)."""
+        output = tmp_path / "output.xml"
+        result = runner.invoke(cli, ["create", str(sample_svg), "-o", str(output), "-w", "100"])
+
+        assert result.exit_code == 0
+        assert "Warning" in result.output
+        assert "Both --width and --height must be specified" in result.output
+
+    def test_create_with_only_height(
+        self, runner: CliRunner, sample_svg: Path, tmp_path: Path
+    ) -> None:
+        """Test create with only --height specified (should warn and use defaults)."""
+        output = tmp_path / "output.xml"
+        result = runner.invoke(cli, ["create", str(sample_svg), "-o", str(output), "-h", "100"])
+
+        assert result.exit_code == 0
+        assert "Warning" in result.output
+        assert "Both --width and --height must be specified" in result.output
+
+    def test_create_with_keyboard_interrupt(
+        self, runner: CliRunner, sample_svg: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Test create command handles KeyboardInterrupt gracefully."""
+        from SVG2DrawIOLib.svg_processor import SVGProcessor
+
+        def mock_process(*args, **kwargs):
+            raise KeyboardInterrupt()
+
+        monkeypatch.setattr(SVGProcessor, "process_svg_file", mock_process)
+
+        output = tmp_path / "output.xml"
+        result = runner.invoke(cli, ["create", str(sample_svg), "-o", str(output)])
+
+        assert result.exit_code == 130
+        assert "Interrupted by user" in result.output
+
+    def test_create_with_unexpected_error_verbose(
+        self, runner: CliRunner, sample_svg: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Test create command with unexpected error in verbose mode."""
+        from SVG2DrawIOLib.svg_processor import SVGProcessor
+
+        def mock_process(*args, **kwargs):
+            raise RuntimeError("Unexpected error")
+
+        monkeypatch.setattr(SVGProcessor, "process_svg_file", mock_process)
+
+        output = tmp_path / "output.xml"
+        result = runner.invoke(cli, ["create", str(sample_svg), "-o", str(output), "-v"])
+
+        assert result.exit_code == 1
+
+
+class TestAddCommandEdgeCases:
+    """Additional tests for add command edge cases."""
+
+    def test_add_with_only_width(self, runner: CliRunner, sample_svg: Path, tmp_path: Path) -> None:
+        """Test add with only --width specified (should warn)."""
+        library = tmp_path / "library.xml"
+
+        # Create initial library
+        result = runner.invoke(cli, ["create", str(sample_svg), "-o", str(library)])
+        assert result.exit_code == 0
+
+        # Add with only width
+        result = runner.invoke(cli, ["add", str(library), str(sample_svg), "-w", "100"])
+
+        assert result.exit_code == 0
+        assert "Warning" in result.output
+        assert "Both --width and --height must be specified" in result.output
+
+    def test_add_with_only_height(
+        self, runner: CliRunner, sample_svg: Path, tmp_path: Path
+    ) -> None:
+        """Test add with only --height specified (should warn)."""
+        library = tmp_path / "library.xml"
+
+        # Create initial library
+        result = runner.invoke(cli, ["create", str(sample_svg), "-o", str(library)])
+        assert result.exit_code == 0
+
+        # Add with only height
+        result = runner.invoke(cli, ["add", str(library), str(sample_svg), "-h", "100"])
+
+        assert result.exit_code == 0
+        assert "Warning" in result.output
+        assert "Both --width and --height must be specified" in result.output
+
+    def test_add_with_unexpected_error_verbose(
+        self, runner: CliRunner, sample_svg: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Test add command with unexpected error in verbose mode."""
+        library = tmp_path / "library.xml"
+
+        # Create initial library
+        result = runner.invoke(cli, ["create", str(sample_svg), "-o", str(library)])
+        assert result.exit_code == 0
+
+        from SVG2DrawIOLib.svg_processor import SVGProcessor
+
+        def mock_process(*args, **kwargs):
+            raise RuntimeError("Unexpected error")
+
+        monkeypatch.setattr(SVGProcessor, "process_svg_file", mock_process)
+
+        result = runner.invoke(cli, ["add", str(library), str(sample_svg), "-v"])
+
+        assert result.exit_code == 1
+
+    def test_add_with_add_dupes_flag(
+        self, runner: CliRunner, sample_svg: Path, tmp_path: Path
+    ) -> None:
+        """Test add command with --add-dupes flag."""
+        library = tmp_path / "library.xml"
+
+        # Create initial library with test_icon
+        result = runner.invoke(cli, ["create", str(sample_svg), "-o", str(library)])
+        assert result.exit_code == 0
+
+        # Add same icon again with --add-dupes
+        result = runner.invoke(cli, ["add", str(library), str(sample_svg), "--add-dupes"])
+        assert result.exit_code == 0
+
+        # Verify test_icon_2 was created
+        tree = ET.parse(library)
+        config = json.loads(tree.getroot().text)
+        titles = [item["title"] for item in config]
+        assert "test_icon" in titles
+        assert "test_icon_2" in titles
+
+
+class TestRemoveCommandEdgeCases:
+    """Additional tests for remove command edge cases."""
+
+    def test_remove_with_unexpected_error_verbose(
+        self, runner: CliRunner, sample_svg: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Test remove command with unexpected error in verbose mode."""
+        library = tmp_path / "library.xml"
+
+        # Create initial library
+        result = runner.invoke(cli, ["create", str(sample_svg), "-o", str(library)])
+        assert result.exit_code == 0
+
+        from SVG2DrawIOLib.library_manager import LibraryManager
+
+        def mock_remove(*args, **kwargs):
+            raise RuntimeError("Unexpected error")
+
+        monkeypatch.setattr(LibraryManager, "remove_icons_from_library", mock_remove)
+
+        result = runner.invoke(cli, ["remove", str(library), "test_icon", "-v"])
+
+        assert result.exit_code == 1
+
+
+class TestListCommandEdgeCases:
+    """Additional tests for list command edge cases."""
+
+    def test_list_with_unexpected_error_verbose(
+        self, runner: CliRunner, sample_svg: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Test list command with unexpected error in verbose mode."""
+        library = tmp_path / "library.xml"
+
+        # Create initial library
+        result = runner.invoke(cli, ["create", str(sample_svg), "-o", str(library)])
+        assert result.exit_code == 0
+
+        from SVG2DrawIOLib.library_manager import LibraryManager
+
+        def mock_list(*args, **kwargs):
+            raise RuntimeError("Unexpected error")
+
+        monkeypatch.setattr(LibraryManager, "list_icons", mock_list)
+
+        result = runner.invoke(cli, ["list", str(library), "-v"])
+
+        assert result.exit_code == 1
