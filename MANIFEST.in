@@ -2,7 +2,6 @@ include README.md
 include LICENSE.txt
 include CHANGELOG.md
 include CONTRIBUTING.md
-include MIGRATION.md
 include QUICKSTART.md
 include pyproject.toml
 
