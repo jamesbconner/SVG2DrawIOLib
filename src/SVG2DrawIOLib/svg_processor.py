@@ -5,6 +5,7 @@ import logging
 import xml.etree.ElementTree as ET
 import zlib
 from pathlib import Path
+from typing import cast
 
 from SVG2DrawIOLib.models import DrawIOIcon, SVGDimensions, SVGProcessingOptions
 
@@ -43,7 +44,10 @@ class SVGProcessor:
         ET.register_namespace("", self.options.xml_namespace)
 
         try:
-            tree = ET.parse(filepath)
+            tree: ET.ElementTree[ET.Element[str] | None] = cast(  # type: ignore[type-arg,redundant-cast]
+                ET.ElementTree[ET.Element[str] | None],  # type: ignore[type-arg]
+                ET.parse(filepath),
+            )
             logger.debug(f"Successfully loaded SVG: {filepath}")
             return tree
         except ET.ParseError as e:
@@ -60,6 +64,10 @@ class SVGProcessor:
             Modified SVG ElementTree with CSS classes.
         """
         root = svg_tree.getroot()
+        if root is None:
+            logger.error("SVG tree has no root element")
+            raise ValueError("SVG tree has no root element")
+
         tag = self.options.namespaced_tag
         color = self.options.css_color
 
@@ -94,6 +102,9 @@ class SVGProcessor:
             Tuple of (width, height) or None if dimensions cannot be determined.
         """
         root = svg_tree.getroot()
+        if root is None:
+            logger.warning("SVG tree has no root element")
+            return None
 
         # Try viewBox first
         viewbox = root.get("viewBox")
@@ -162,7 +173,12 @@ class SVGProcessor:
         Returns:
             Base64-encoded data URI string.
         """
-        svg_bytes = ET.tostring(svg_tree.getroot())
+        root = svg_tree.getroot()
+        if root is None:
+            logger.error("SVG tree has no root element")
+            raise ValueError("SVG tree has no root element")
+
+        svg_bytes = ET.tostring(root)
         encoded = base64.b64encode(svg_bytes).decode("ascii")
         logger.debug(f"Generated SVG data URI (length: {len(encoded)} chars)")
         return f"data:image/svg+xml,{encoded}"

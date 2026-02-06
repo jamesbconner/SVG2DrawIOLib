@@ -4,7 +4,6 @@ import importlib
 import logging
 from pathlib import Path
 
-import click
 import rich_click as rc
 
 # Configure rich-click for beautiful, colorful help output
@@ -49,7 +48,7 @@ rc.rich_click.COMMAND_GROUPS = {
             "commands": ["create", "add", "remove", "list"],
             "table_styles": {
                 "show_lines": True,
-                "row_styles": ["none", "dim"],
+                "row_styles": ["none"],
                 "border_style": "blue",
                 "box": "ROUNDED",
             },
@@ -112,16 +111,16 @@ rc.rich_click.OPTION_GROUPS = {
 logger = logging.getLogger(__name__)
 
 
-@click.group()
-@click.version_option()
+@rc.group()
+@rc.version_option()
 def cli() -> None:
     """SVG2DrawIOLib - Manage DrawIO/diagrams.net shape libraries.
 
     Convert SVG files into DrawIO libraries and manage existing libraries.
     Supports color-editable icons and proportional scaling.
 
+    \b
     Examples:
-
         Create a new library from SVG files:
         $ SVG2DrawIOLib create icons/*.svg -o my-library.xml
 

@@ -35,10 +35,10 @@ def list(
 ) -> None:
     """List all icons in a DrawIO library.
 
+    \b
     Displays all icon names in the specified library file.
 
     Example:
-
         List all icons:
         $ SVG2DrawIOLib list my-library.xml
     """

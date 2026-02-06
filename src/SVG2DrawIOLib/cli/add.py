@@ -99,41 +99,42 @@ def add(
     Accepts individual SVG files, directories, or a mix of both.
     Use --recursive to search subdirectories.
 
+    \b
     Duplicate Handling:
-
         Default: Skip icons with duplicate names
-
         --replace: Replace existing icons with same names
-
         --add-dupes: Add duplicates with modified names (e.g., icon_2, icon_3)
 
+    \b
     Scaling Options:
-
         --max-size: Scale icons proportionally (longest side = max-size)
-
         --width/--height: Set fixed dimensions (ignores aspect ratio)
-
         Neither: Use original dimensions or library defaults
 
     Examples:
-
         Add individual files:
         $ SVG2DrawIOLib add my-library.xml new-icon1.svg new-icon2.svg
+
 
         Add from directory:
         $ SVG2DrawIOLib add my-library.xml icons/
 
+
         Add from directory recursively:
         $ SVG2DrawIOLib add my-library.xml icons/ --recursive
+
 
         Replace existing icons with same names:
         $ SVG2DrawIOLib add my-library.xml icons/ --replace
 
+
         Add duplicates with modified names:
         $ SVG2DrawIOLib add my-library.xml icons/ --add-dupes
 
+
         Add with proportional scaling:
         $ SVG2DrawIOLib add my-library.xml icons/ --max-size 64 -R
+
 
         Add with fixed dimensions:
         $ SVG2DrawIOLib add my-library.xml icons/ -w 50 -h 50

@@ -111,30 +111,32 @@ def create(
     Accepts individual SVG files, directories, or a mix of both.
     Use --recursive to search subdirectories.
 
+    \b
     Scaling Options:
-
         --max-size: Scale icons proportionally (longest side = max-size)
-
         --width/--height: Set fixed dimensions (ignores aspect ratio)
-
         Neither: Use default 40x40 pixels
 
     Examples:
-
         Create from individual files:
         $ SVG2DrawIOLib create icon1.svg icon2.svg -o lib.xml
+
 
         Create from directory:
         $ SVG2DrawIOLib create icons/ -o lib.xml
 
+
         Create from directory recursively:
         $ SVG2DrawIOLib create icons/ -o lib.xml --recursive
+
 
         Create with proportional scaling (max 64px):
         $ SVG2DrawIOLib create icons/ -o lib.xml --max-size 64 -R
 
+
         Create with fixed dimensions:
         $ SVG2DrawIOLib create icons/*.svg -o lib.xml -w 50 -h 50
+
 
         Enable color editing:
         $ SVG2DrawIOLib create icons/ -o lib.xml --css

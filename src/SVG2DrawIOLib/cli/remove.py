@@ -39,9 +39,9 @@ def remove(
     Removes one or more icons from an existing library file.
 
     Examples:
-
         Remove single icon:
         $ SVG2DrawIOLib remove my-library.xml old-icon
+
 
         Remove multiple icons:
         $ SVG2DrawIOLib remove my-library.xml icon1 icon2 icon3
