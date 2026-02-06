@@ -297,10 +297,10 @@ class TestLibraryManager:
         with pytest.raises(ValueError, match="Invalid library format"):
             manager.load_library(invalid)
 
-    def test_add_icons_warns_about_existing_duplicates(
+    def test_add_icons_renames_existing_duplicates(
         self, manager: LibraryManager, sample_icons: list[DrawIOIcon], tmp_path: Path, caplog
     ) -> None:
-        """Test that adding to a library with duplicate names logs a warning."""
+        """Test that adding to a library with duplicate names renames them to preserve all icons."""
         import logging
 
         output = tmp_path / "test_library.xml"
@@ -318,16 +318,88 @@ class TestLibraryManager:
         # Create library with duplicates
         manager.create_library(duplicate_icons, output)
 
-        # Now try to add more icons - should warn about existing duplicates
+        # Now try to add more icons - should rename existing duplicates
         new_icon = DrawIOIcon(
             name="icon_d",
             xml_data=b"data_d",
             dimensions=SVGDimensions(width=40, height=40),
         )
 
-        with caplog.at_level(logging.WARNING):
-            manager.add_icons_to_library(output, [new_icon])
+        with caplog.at_level(logging.INFO):
+            metadata = manager.add_icons_to_library(output, [new_icon])
 
-        # Check that warning was logged
-        assert any("duplicate names" in record.message for record in caplog.records)
-        assert any("icon_a" in record.message for record in caplog.records)
+        # Check that info message was logged about renaming
+        assert any(
+            "Renamed" in record.message and "duplicate" in record.message
+            for record in caplog.records
+        )
+
+        # Verify all icons are preserved (3 original + 1 duplicate + 1 new = 5)
+        assert metadata.icon_count == 5
+
+        # Load and verify icon names
+        loaded_icons = manager.load_library(output)
+        names = [icon.name for icon in loaded_icons]
+
+        # Should have icon_a, icon_a_2, icon_b, icon_c, icon_d
+        assert "icon_a" in names
+        assert "icon_a_2" in names
+        assert "icon_b" in names
+        assert "icon_c" in names
+        assert "icon_d" in names
+
+    def test_preserves_all_icons_from_different_folders(
+        self, manager: LibraryManager, tmp_path: Path
+    ) -> None:
+        """Test that icons with same name from different folders are all preserved."""
+        output = tmp_path / "test_library.xml"
+
+        # Simulate icons from folder-1 (red icons) and folder-2 (blue icons)
+        # Both have an "arrow" icon but they're different styles
+        red_arrow = DrawIOIcon(
+            name="arrow",
+            xml_data=b"red_arrow_data",
+            dimensions=SVGDimensions(width=40, height=40),
+        )
+        blue_arrow = DrawIOIcon(
+            name="arrow",
+            xml_data=b"blue_arrow_data",
+            dimensions=SVGDimensions(width=40, height=40),
+        )
+        red_circle = DrawIOIcon(
+            name="circle",
+            xml_data=b"red_circle_data",
+            dimensions=SVGDimensions(width=40, height=40),
+        )
+        blue_circle = DrawIOIcon(
+            name="circle",
+            xml_data=b"blue_circle_data",
+            dimensions=SVGDimensions(width=40, height=40),
+        )
+
+        # Create library with red icons
+        manager.create_library([red_arrow, red_circle], output)
+
+        # Add blue icons with add_duplicates=True to preserve both versions
+        metadata = manager.add_icons_to_library(
+            output, [blue_arrow, blue_circle], add_duplicates=True
+        )
+
+        # Should have 4 icons total
+        assert metadata.icon_count == 4
+
+        # Load and verify all icons are present
+        loaded_icons = manager.load_library(output)
+        names = [icon.name for icon in loaded_icons]
+
+        # Should have arrow, arrow_2, circle, circle_2
+        assert "arrow" in names
+        assert "arrow_2" in names
+        assert "circle" in names
+        assert "circle_2" in names
+
+        # Verify the data is correct (first occurrence keeps original name)
+        arrow_1 = next(icon for icon in loaded_icons if icon.name == "arrow")
+        arrow_2 = next(icon for icon in loaded_icons if icon.name == "arrow_2")
+        assert arrow_1.xml_data == b"red_arrow_data"
+        assert arrow_2.xml_data == b"blue_arrow_data"

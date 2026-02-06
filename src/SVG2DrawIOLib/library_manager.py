@@ -137,23 +137,41 @@ class LibraryManager:
         # Load existing icons
         existing_icons = self.load_library(library_path)
 
-        # Check for duplicate names in existing icons and warn
+        # Check for duplicate names in existing icons and make them unique
         existing_names = [icon.name for icon in existing_icons]
         if len(existing_names) != len(set(existing_names)):
-            # Find duplicates
-            seen = set()
-            duplicates = set()
-            for name in existing_names:
-                if name in seen:
-                    duplicates.add(name)
-                seen.add(name)
+            # Find duplicates and rename them
+            name_counts: dict[str, int] = {}
+            renamed_count = 0
 
-            logger.warning(
-                f"Library contains {len(duplicates)} icon(s) with duplicate names: {sorted(duplicates)}. "
-                "Only the last occurrence of each duplicate will be preserved."
+            for i, icon in enumerate(existing_icons):
+                if icon.name in name_counts:
+                    # This is a duplicate - create unique name
+                    name_counts[icon.name] += 1
+                    counter = name_counts[icon.name]
+                    new_name = f"{icon.name}_{counter}"
+
+                    # Ensure the new name is also unique
+                    while new_name in existing_names or new_name in name_counts:
+                        counter += 1
+                        new_name = f"{icon.name}_{counter}"
+
+                    # Create new icon with unique name
+                    existing_icons[i] = DrawIOIcon(
+                        name=new_name,
+                        xml_data=icon.xml_data,
+                        dimensions=icon.dimensions,
+                    )
+                    renamed_count += 1
+                    logger.debug(f"Renamed duplicate icon: {icon.name} -> {new_name}")
+                else:
+                    name_counts[icon.name] = 1
+
+            logger.info(
+                f"Renamed {renamed_count} duplicate icon(s) to preserve all icons from library"
             )
 
-        # Create a map of existing icons by name (last occurrence wins)
+        # Create a map of existing icons by name (now all unique)
         icon_map = {icon.name: icon for icon in existing_icons}
 
         # Add or replace icons
