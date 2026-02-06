@@ -165,9 +165,10 @@ class TestLibraryManager:
         output = tmp_path / "test_library.xml"
         manager.create_library(sample_icons, output)
 
-        metadata = manager.remove_icons_from_library(output, ["icon_b"])
+        metadata, removed_count = manager.remove_icons_from_library(output, ["icon_b"])
 
         assert metadata.icon_count == 2
+        assert removed_count == 1
 
         loaded_icons = manager.load_library(output)
         names = [icon.name for icon in loaded_icons]
@@ -182,9 +183,10 @@ class TestLibraryManager:
         output = tmp_path / "test_library.xml"
         manager.create_library(sample_icons, output)
 
-        metadata = manager.remove_icons_from_library(output, ["icon_a", "icon_c"])
+        metadata, removed_count = manager.remove_icons_from_library(output, ["icon_a", "icon_c"])
 
         assert metadata.icon_count == 1
+        assert removed_count == 2
 
         loaded_icons = manager.load_library(output)
         assert len(loaded_icons) == 1

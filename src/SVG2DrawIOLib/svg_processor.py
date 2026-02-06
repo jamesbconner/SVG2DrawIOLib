@@ -44,8 +44,8 @@ class SVGProcessor:
         ET.register_namespace("", self.options.xml_namespace)
 
         try:
-            tree: ET.ElementTree[ET.Element[str] | None] = cast(  # type: ignore[type-arg,redundant-cast]
-                ET.ElementTree[ET.Element[str] | None],  # type: ignore[type-arg]
+            tree: ET.ElementTree = cast(  # type: ignore[redundant-cast]
+                ET.ElementTree,
                 ET.parse(filepath),  # nosec B314 - User-provided SVG file, user controls input
             )
             logger.debug(f"Successfully loaded SVG: {filepath}")
