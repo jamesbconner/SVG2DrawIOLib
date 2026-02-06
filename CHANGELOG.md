@@ -1,0 +1,50 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [1.0.0] - 2026-02-06
+
+### Initial Release
+
+A complete rewrite and modernization of the SVG to DrawIO library converter with a focus on maintainability, type safety, and user experience.
+
+#### Features
+
+- **Modular CLI Architecture**: Command-line interface with subcommands (create, add, remove, list) using Click and rich-click for colorful output
+- **Class-Based Design**: Clean separation of concerns with dedicated classes:
+  - `SVGProcessor`: Handles SVG file processing and transformations
+  - `LibraryManager`: Manages DrawIO library file operations
+  - Dataclasses for type-safe data structures (SVGDimensions, DrawIOIcon, SVGProcessingOptions, LibraryMetadata)
+- **Proportional Scaling**: Intelligent icon scaling that maintains aspect ratio with `--max-size` option
+- **Fixed Dimensions**: Support for custom width/height with `--width` and `--height` options
+- **CSS Color Editing**: Optional CSS class injection for color customization in DrawIO
+- **Library Management**: Add, remove, and list icons in existing library files
+- **Rich Output**: Colorful CLI with emojis, formatted tables, and clear status messages
+
+#### Developer Experience
+
+- **Type Safety**: Full type annotations with mypy strict mode compliance
+- **Documentation**: Google-style docstrings throughout codebase
+- **Testing**: Comprehensive test suite with 51 tests and 85% coverage
+- **Code Quality**: Automated checks with ruff, mypy, bandit, and pre-commit hooks
+- **Structured Logging**: Rich-formatted logging with configurable verbosity
+- **CI/CD**: GitHub Actions workflows for testing, building, and publishing to PyPI
+- **Modern Tooling**: Uses uv for dependency management and hatchling for packaging
+
+#### Requirements
+
+- Python 3.13+
+- Modern dependency stack with rich-click, rich, and lxml
+
+#### Architecture
+
+The project follows SOLID principles with clear module boundaries:
+- `models.py`: Data structures and validation
+- `svg_processor.py`: SVG processing logic
+- `library_manager.py`: Library file management
+- `cli/`: Modular CLI with dynamic command loading
+
+[1.0.0]: https://github.com/jamesbconner/SVG2DrawIOLib/releases/tag/v1.0.0
