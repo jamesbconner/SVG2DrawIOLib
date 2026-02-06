@@ -34,7 +34,7 @@ from SVG2DrawIOLib.svg_processor import SVGProcessor
     "--add-dupes",
     "-d",
     is_flag=True,
-    help="Add duplicate icons with modified names instead of skipping.",
+    help="Add duplicate icons with modified names (e.g., icon_2, icon_3).",
 )
 @rc.option(
     "--max-size",
@@ -111,6 +111,7 @@ def add(
         --width/--height: Set fixed dimensions (ignores aspect ratio)
         Neither: Use original dimensions or library defaults
 
+    \b
     Examples:
         Add individual files:
         $ SVG2DrawIOLib add my-library.xml new-icon1.svg new-icon2.svg
@@ -182,6 +183,15 @@ def add(
             # Fixed dimensions - will be handled per-icon
             max_dimension = None
             logger.info(f"Using fixed dimensions: {width}x{height}")
+        elif width is not None or height is not None:
+            # Only one dimension specified - warn user
+            console.print(
+                "[yellow]Warning:[/yellow] Both --width and --height must be specified for fixed dimensions. "
+                "Using original dimensions instead.",
+                style="bold",
+            )
+            max_dimension = None
+            logger.warning("Only one dimension specified, using original dimensions")
         elif max_size is not None:
             max_dimension = max_size
             logger.info(f"Using proportional scaling with max dimension: {max_size}")
@@ -219,19 +229,9 @@ def add(
 
         # Add to library
         manager = LibraryManager()
-
-        # Determine duplicate handling strategy
-        if add_dupes:
-            # TODO: Implement add_dupes functionality in LibraryManager
-            # For now, use replace_duplicates=False (skip)
-            logger.warning("--add-dupes functionality not yet implemented, skipping duplicates")
-            metadata = manager.add_icons_to_library(
-                library_file, new_icons, replace_duplicates=False
-            )
-        else:
-            metadata = manager.add_icons_to_library(
-                library_file, new_icons, replace_duplicates=replace
-            )
+        metadata = manager.add_icons_to_library(
+            library_file, new_icons, replace_duplicates=replace, add_duplicates=add_dupes
+        )
 
         console.print(
             f"[green]✓[/green] Updated library with {metadata.icon_count} total icon(s): "

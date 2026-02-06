@@ -777,21 +777,21 @@ name = "svg2drawiolib"
 source = { editable = "." }
 dependencies = [
     { name = "click" },
-    { name = "pip" },
     { name = "rich" },
     { name = "rich-click" },
-    { name = "uv" },
 ]
 
 [package.optional-dependencies]
 dev = [
     { name = "bandit" },
     { name = "mypy" },
+    { name = "pip" },
     { name = "pre-commit" },
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "ruff" },
     { name = "twine" },
+    { name = "uv" },
 ]
 
 [package.metadata]
@@ -799,7 +799,7 @@ requires-dist = [
     { name = "bandit", marker = "extra == 'dev'", specifier = ">=1.7.0" },
     { name = "click", specifier = ">=8.1.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.18.0" },
-    { name = "pip", specifier = ">=26.0.1" },
+    { name = "pip", marker = "extra == 'dev'", specifier = ">=26.0.1" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=4.4.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.4.2" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=6.0.0" },
@@ -807,7 +807,7 @@ requires-dist = [
     { name = "rich-click", specifier = ">=1.8.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.14.4" },
     { name = "twine", marker = "extra == 'dev'", specifier = ">=5.0.0" },
-    { name = "uv", specifier = ">=0.10.0" },
+    { name = "uv", marker = "extra == 'dev'", specifier = ">=0.10.0" },
 ]
 provides-extras = ["dev"]
 

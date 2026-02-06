@@ -177,6 +177,15 @@ def create(
             # Fixed dimensions - will be handled per-icon
             max_dimension = None
             logger.info(f"Using fixed dimensions: {width}x{height}")
+        elif width is not None or height is not None:
+            # Only one dimension specified - warn user
+            console.print(
+                "[yellow]Warning:[/yellow] Both --width and --height must be specified for fixed dimensions. "
+                "Using default sizing instead.",
+                style="bold",
+            )
+            max_dimension = None
+            logger.warning("Only one dimension specified, using default sizing")
         elif max_size is not None:
             max_dimension = max_size
             logger.info(f"Using proportional scaling with max dimension: {max_size}")

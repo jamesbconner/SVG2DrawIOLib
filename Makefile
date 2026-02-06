@@ -42,15 +42,9 @@ pre-commit: ## Run pre-commit hooks on all files
 	uv run pre-commit run --all-files
 
 clean: ## Clean build artifacts and caches
-	@if exist dist rmdir /s /q dist
-	@if exist build rmdir /s /q build
-	@if exist *.egg-info rmdir /s /q *.egg-info
-	@if exist .pytest_cache rmdir /s /q .pytest_cache
-	@if exist .mypy_cache rmdir /s /q .mypy_cache
-	@if exist .ruff_cache rmdir /s /q .ruff_cache
-	@if exist htmlcov rmdir /s /q htmlcov
-	@for /d /r . %%d in (__pycache__) do @if exist "%%d" rmdir /s /q "%%d"
-	@del /s /q *.pyc 2>nul
+	rm -rf dist build *.egg-info .pytest_cache .mypy_cache .ruff_cache htmlcov
+	find . -type d -name __pycache__ -exec rm -rf {} +
+	find . -type f -name "*.pyc" -delete
 
 run: ## Run the CLI (use ARGS="..." to pass arguments)
 	SVG2DrawIOLib $(ARGS)

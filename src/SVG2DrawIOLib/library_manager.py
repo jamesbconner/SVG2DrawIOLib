@@ -111,7 +111,11 @@ class LibraryManager:
             raise ValueError(f"Invalid library format: {e}") from e
 
     def add_icons_to_library(
-        self, library_path: Path, new_icons: list[DrawIOIcon], replace_duplicates: bool = False
+        self,
+        library_path: Path,
+        new_icons: list[DrawIOIcon],
+        replace_duplicates: bool = False,
+        add_duplicates: bool = False,
     ) -> LibraryMetadata:
         """Add icons to an existing library.
 
@@ -119,7 +123,7 @@ class LibraryManager:
             library_path: Path to the existing library file.
             new_icons: List of icons to add.
             replace_duplicates: If True, replace icons with duplicate names.
-                If False, skip duplicates.
+            add_duplicates: If True, add duplicates with modified names (e.g., icon_2, icon_3).
 
         Returns:
             LibraryMetadata with updated library information.
@@ -147,6 +151,26 @@ class LibraryManager:
                     icon_map[new_icon.name] = new_icon
                     replaced_count += 1
                     logger.debug(f"Replaced icon: {new_icon.name}")
+                elif add_duplicates:
+                    # Find a unique name by appending _2, _3, etc.
+                    base_name = new_icon.name
+                    counter = 2
+                    unique_name = f"{base_name}_{counter}"
+                    while unique_name in icon_map:
+                        counter += 1
+                        unique_name = f"{base_name}_{counter}"
+
+                    # Create new icon with unique name
+                    from SVG2DrawIOLib.models import DrawIOIcon
+
+                    unique_icon = DrawIOIcon(
+                        name=unique_name,
+                        xml_data=new_icon.xml_data,
+                        dimensions=new_icon.dimensions,
+                    )
+                    icon_map[unique_name] = unique_icon
+                    added_count += 1
+                    logger.debug(f"Added duplicate icon with modified name: {unique_name}")
                 else:
                     skipped_count += 1
                     logger.debug(f"Skipped duplicate icon: {new_icon.name}")
@@ -163,7 +187,7 @@ class LibraryManager:
 
     def remove_icons_from_library(
         self, library_path: Path, icon_names: list[str]
-    ) -> LibraryMetadata:
+    ) -> tuple[LibraryMetadata, int]:
         """Remove icons from a library by name.
 
         Args:
@@ -171,7 +195,7 @@ class LibraryManager:
             icon_names: List of icon names to remove.
 
         Returns:
-            LibraryMetadata with updated library information.
+            Tuple of (LibraryMetadata with updated library information, number of icons actually removed).
 
         Raises:
             FileNotFoundError: If the library file does not exist.
@@ -190,7 +214,8 @@ class LibraryManager:
         logger.info(f"Removed {removed_count} icon(s)")
 
         # Save updated library
-        return self.create_library(filtered_icons, library_path)
+        metadata = self.create_library(filtered_icons, library_path)
+        return metadata, removed_count
 
     def list_icons(self, library_path: Path) -> list[str]:
         """List all icon names in a library.

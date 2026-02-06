@@ -51,12 +51,18 @@ def remove(
 
     try:
         manager = LibraryManager()
-        metadata = manager.remove_icons_from_library(library_file, list(icon_names))
+        metadata, removed_count = manager.remove_icons_from_library(library_file, list(icon_names))
 
-        console.print(
-            f"[green]✓[/green] Removed {len(icon_names)} icon(s). "
-            f"Library now has {metadata.icon_count} icon(s): [cyan]{library_file}[/cyan]"
-        )
+        if removed_count == 0:
+            console.print(
+                "[yellow]Warning:[/yellow] No icons were removed. "
+                "Requested icons not found in library."
+            )
+        else:
+            console.print(
+                f"[green]✓[/green] Removed {removed_count} icon(s). "
+                f"Library now has {metadata.icon_count} icon(s): [cyan]{library_file}[/cyan]"
+            )
 
     except Exception as e:
         logger.error(f"Error: {e}")

@@ -158,6 +158,11 @@ class SVGProcessor:
 
         # Calculate aspect ratio and scale
         width, height = svg_dims
+        if height == 0:
+            logger.warning(
+                f"SVG has zero height, using square dimensions: {max_dimension}x{max_dimension}"
+            )
+            return SVGDimensions.from_fixed_dimensions(max_dimension, max_dimension)
         aspect_ratio = width / height
         return SVGDimensions.from_max_dimension(max_dimension, aspect_ratio)
 
