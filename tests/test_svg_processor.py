@@ -252,3 +252,35 @@ class TestSVGProcessor:
         tree = ET.ElementTree()
         with pytest.raises(ValueError, match="SVG tree has no root element"):
             processor.svg_to_data_uri(tree)
+
+    def test_process_svg_file_with_fixed_dimensions(
+        self, processor: SVGProcessor, sample_svg_file: Path
+    ) -> None:
+        """Test processing with fixed dimensions."""
+        icon = processor.process_svg_file(sample_svg_file, fixed_dimensions=(100, 75))
+
+        assert icon.name == "test_icon"
+        assert icon.dimensions.width == 100
+        assert icon.dimensions.height == 75
+
+        # Verify dimensions are baked into the XML
+        import base64
+        import xml.etree.ElementTree as ET
+        import zlib
+
+        # Decompress and decode the XML
+        decoded = base64.b64decode(icon.xml_data)
+        # Add zlib header and checksum back
+        compressed = b"\x78\x9c" + decoded + b"\x00\x00\x00\x00"
+        try:
+            decompressed = zlib.decompress(compressed)
+        except zlib.error:
+            # If that doesn't work, try without header/checksum
+            decompressed = zlib.decompress(decoded, -zlib.MAX_WBITS)
+
+        # Parse the XML
+        root = ET.fromstring(decompressed)
+        geometry = root.find(".//mxGeometry")
+        assert geometry is not None
+        assert geometry.get("width") == "100"
+        assert geometry.get("height") == "75"

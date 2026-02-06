@@ -210,13 +210,9 @@ def add(
 
         for svg_path in svg_files:
             try:
-                # If fixed dimensions specified, override max_dimension
+                # If fixed dimensions specified, pass them to processor
                 if width is not None and height is not None:
-                    icon = processor.process_svg_file(svg_path, max_dimension=None)
-                    # Override dimensions
-                    from SVG2DrawIOLib.models import SVGDimensions
-
-                    icon.dimensions = SVGDimensions(width=width, height=height)
+                    icon = processor.process_svg_file(svg_path, fixed_dimensions=(width, height))
                 else:
                     icon = processor.process_svg_file(svg_path, max_dimension=max_dimension)
 

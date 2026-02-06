@@ -8,7 +8,7 @@ import rich_click as rc
 
 from SVG2DrawIOLib.cli.helpers import console, setup_logging
 from SVG2DrawIOLib.library_manager import LibraryManager
-from SVG2DrawIOLib.models import SVGDimensions, SVGProcessingOptions
+from SVG2DrawIOLib.models import SVGProcessingOptions
 from SVG2DrawIOLib.svg_processor import SVGProcessor
 
 
@@ -209,11 +209,9 @@ def create(
 
         for svg_path in svg_files:
             try:
-                # If fixed dimensions specified, override max_dimension
+                # If fixed dimensions specified, pass them to processor
                 if width is not None and height is not None:
-                    icon = processor.process_svg_file(svg_path, max_dimension=None)
-                    # Override dimensions
-                    icon.dimensions = SVGDimensions(width=width, height=height)
+                    icon = processor.process_svg_file(svg_path, fixed_dimensions=(width, height))
                 else:
                     icon = processor.process_svg_file(svg_path, max_dimension=max_dimension)
 

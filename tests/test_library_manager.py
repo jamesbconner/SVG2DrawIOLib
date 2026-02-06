@@ -296,3 +296,38 @@ class TestLibraryManager:
 
         with pytest.raises(ValueError, match="Invalid library format"):
             manager.load_library(invalid)
+
+    def test_add_icons_warns_about_existing_duplicates(
+        self, manager: LibraryManager, sample_icons: list[DrawIOIcon], tmp_path: Path, caplog
+    ) -> None:
+        """Test that adding to a library with duplicate names logs a warning."""
+        import logging
+
+        output = tmp_path / "test_library.xml"
+
+        # Create library with duplicate names by manually creating the XML
+        # This simulates what happens when using --recursive with same basenames
+        duplicate_icons = sample_icons + [
+            DrawIOIcon(
+                name="icon_a",  # Duplicate name
+                xml_data=b"data_duplicate",
+                dimensions=SVGDimensions(width=40, height=40),
+            )
+        ]
+
+        # Create library with duplicates
+        manager.create_library(duplicate_icons, output)
+
+        # Now try to add more icons - should warn about existing duplicates
+        new_icon = DrawIOIcon(
+            name="icon_d",
+            xml_data=b"data_d",
+            dimensions=SVGDimensions(width=40, height=40),
+        )
+
+        with caplog.at_level(logging.WARNING):
+            manager.add_icons_to_library(output, [new_icon])
+
+        # Check that warning was logged
+        assert any("duplicate names" in record.message for record in caplog.records)
+        assert any("icon_a" in record.message for record in caplog.records)

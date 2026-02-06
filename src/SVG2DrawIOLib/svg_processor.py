@@ -188,12 +188,19 @@ class SVGProcessor:
         logger.debug(f"Generated SVG data URI (length: {len(encoded)} chars)")
         return f"data:image/svg+xml,{encoded}"
 
-    def process_svg_file(self, filepath: Path, max_dimension: float | None = None) -> DrawIOIcon:
+    def process_svg_file(
+        self,
+        filepath: Path,
+        max_dimension: float | None = None,
+        fixed_dimensions: tuple[float, float] | None = None,
+    ) -> DrawIOIcon:
         """Process a single SVG file into a DrawIO icon.
 
         Args:
             filepath: Path to the SVG file.
             max_dimension: Optional maximum dimension for scaling.
+            fixed_dimensions: Optional tuple of (width, height) for fixed dimensions.
+                If provided, overrides max_dimension and aspect ratio.
 
         Returns:
             DrawIOIcon ready for library inclusion.
@@ -212,7 +219,11 @@ class SVGProcessor:
             svg_tree = self.add_css_classes(svg_tree)
 
         # Calculate dimensions
-        dimensions = self.calculate_dimensions(svg_tree, max_dimension)
+        if fixed_dimensions is not None:
+            dimensions = SVGDimensions(width=fixed_dimensions[0], height=fixed_dimensions[1])
+            logger.debug(f"Using fixed dimensions: {dimensions.width}x{dimensions.height}")
+        else:
+            dimensions = self.calculate_dimensions(svg_tree, max_dimension)
 
         # Convert to data URI
         data_uri = self.svg_to_data_uri(svg_tree)

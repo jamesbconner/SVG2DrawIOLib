@@ -137,7 +137,23 @@ class LibraryManager:
         # Load existing icons
         existing_icons = self.load_library(library_path)
 
-        # Create a map of existing icons by name
+        # Check for duplicate names in existing icons and warn
+        existing_names = [icon.name for icon in existing_icons]
+        if len(existing_names) != len(set(existing_names)):
+            # Find duplicates
+            seen = set()
+            duplicates = set()
+            for name in existing_names:
+                if name in seen:
+                    duplicates.add(name)
+                seen.add(name)
+
+            logger.warning(
+                f"Library contains {len(duplicates)} icon(s) with duplicate names: {sorted(duplicates)}. "
+                "Only the last occurrence of each duplicate will be preserved."
+            )
+
+        # Create a map of existing icons by name (last occurrence wins)
         icon_map = {icon.name: icon for icon in existing_icons}
 
         # Add or replace icons
