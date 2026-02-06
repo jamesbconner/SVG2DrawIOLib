@@ -403,3 +403,75 @@ class TestLibraryManager:
         arrow_2 = next(icon for icon in loaded_icons if icon.name == "arrow_2")
         assert arrow_1.xml_data == b"red_arrow_data"
         assert arrow_2.xml_data == b"blue_arrow_data"
+
+    def test_duplicate_naming_with_existing_suffixed_names(
+        self, manager: LibraryManager, tmp_path: Path
+    ) -> None:
+        """Test that duplicate renaming handles existing suffixed names correctly."""
+        output = tmp_path / "test_library.xml"
+
+        # Create a library with a complex duplicate scenario:
+        # ["icon_a", "icon_a", "icon_a_2", "icon_a"]
+        # Should rename to: ["icon_a", "icon_a_3", "icon_a_2", "icon_a_4"]
+        icons = [
+            DrawIOIcon(
+                name="icon_a",
+                xml_data=b"data_1",
+                dimensions=SVGDimensions(width=40, height=40),
+            ),
+            DrawIOIcon(
+                name="icon_a",
+                xml_data=b"data_2",
+                dimensions=SVGDimensions(width=40, height=40),
+            ),
+            DrawIOIcon(
+                name="icon_a_2",
+                xml_data=b"data_3",
+                dimensions=SVGDimensions(width=40, height=40),
+            ),
+            DrawIOIcon(
+                name="icon_a",
+                xml_data=b"data_4",
+                dimensions=SVGDimensions(width=40, height=40),
+            ),
+        ]
+
+        # Create library with these duplicates
+        manager.create_library(icons, output)
+
+        # Add a new icon to trigger the duplicate detection and renaming
+        new_icon = DrawIOIcon(
+            name="icon_b",
+            xml_data=b"data_b",
+            dimensions=SVGDimensions(width=40, height=40),
+        )
+
+        metadata = manager.add_icons_to_library(output, [new_icon])
+
+        # Should have 5 icons total
+        assert metadata.icon_count == 5
+
+        # Load and verify all icons have unique names
+        loaded_icons = manager.load_library(output)
+        names = [icon.name for icon in loaded_icons]
+
+        # Check all names are unique
+        assert len(names) == len(set(names)), f"Duplicate names found: {names}"
+
+        # Verify the expected names exist
+        assert "icon_a" in names
+        assert "icon_a_2" in names
+        assert "icon_a_3" in names
+        assert "icon_a_4" in names
+        assert "icon_b" in names
+
+        # Verify the data is preserved correctly
+        icon_a = next(icon for icon in loaded_icons if icon.name == "icon_a")
+        icon_a_3 = next(icon for icon in loaded_icons if icon.name == "icon_a_3")
+        icon_a_2 = next(icon for icon in loaded_icons if icon.name == "icon_a_2")
+        icon_a_4 = next(icon for icon in loaded_icons if icon.name == "icon_a_4")
+
+        assert icon_a.xml_data == b"data_1"
+        assert icon_a_3.xml_data == b"data_2"
+        assert icon_a_2.xml_data == b"data_3"
+        assert icon_a_4.xml_data == b"data_4"

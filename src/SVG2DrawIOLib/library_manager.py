@@ -156,6 +156,9 @@ class LibraryManager:
                         counter += 1
                         new_name = f"{icon.name}_{counter}"
 
+                    # Update name_counts to reflect the actual counter used
+                    name_counts[icon.name] = counter
+
                     # Create new icon with unique name
                     existing_icons[i] = DrawIOIcon(
                         name=new_name,
