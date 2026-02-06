@@ -73,7 +73,7 @@ class LibraryManager:
         logger.debug(f"Loading library: {library_path}")
 
         try:
-            tree = ET.parse(library_path)
+            tree = ET.parse(library_path)  # nosec B314 - User-provided library file, user controls input
             root = tree.getroot()
 
             if root.tag != "mxlibrary":

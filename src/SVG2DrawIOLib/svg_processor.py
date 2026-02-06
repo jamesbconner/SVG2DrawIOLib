@@ -46,7 +46,7 @@ class SVGProcessor:
         try:
             tree: ET.ElementTree[ET.Element[str] | None] = cast(  # type: ignore[type-arg,redundant-cast]
                 ET.ElementTree[ET.Element[str] | None],  # type: ignore[type-arg]
-                ET.parse(filepath),
+                ET.parse(filepath),  # nosec B314 - User-provided SVG file, user controls input
             )
             logger.debug(f"Successfully loaded SVG: {filepath}")
             return tree
