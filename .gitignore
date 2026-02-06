@@ -24,3 +24,10 @@ coverage.xml
 # OS
 .DS_Store
 Thumbs.db
+
+# Docs
+DEPLOYMENT.md
+DEPLOYMENT_CHECKLIST.md
+
+# Testing Resources
+resources/
