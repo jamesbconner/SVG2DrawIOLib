@@ -31,6 +31,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Padding Threshold**: Removed the 5% padding threshold - now always adjusts viewBox to actual content bounds.
 
+### Known Limitations
+
+- **Arc Bounds Approximation**: Manual path bounds calculation (fallback for SVGs with transforms or `<defs>`) approximates arc bounds using start and end points only. Arcs that curve significantly beyond their endpoints (e.g., large semicircles) may have underestimated bounds. The primary `svgelements` path handles this correctly for most SVGs.
+
 ## [1.0.0] - 2026-02-06
 
 ### Initial Release

@@ -679,6 +679,37 @@ class TestSVGProcessor:
         assert max_x == 70
         assert max_y == 40
 
+    def test_calculate_path_bounds_arc_approximation_limitation(
+        self, processor: SVGProcessor
+    ) -> None:
+        """Test that arc bounds are approximated (start/end points only).
+
+        This documents a known limitation: arc bounds only consider start and end points,
+        not the actual curve extrema. For a semicircle from (10,50) to (90,50) with
+        radius 40, the arc peaks at approximately y=10, but our calculation only sees
+        y=50 at both endpoints.
+
+        This is acceptable because:
+        1. svgelements library handles this correctly for most cases
+        2. Manual fallback is only used for complex SVGs with transforms/defs
+        3. Proper arc bounds require complex ellipse geometry calculations
+        """
+        # Semicircle arc from (10,50) to (90,50) with radius 40
+        # The arc curves upward, peaking around y=10
+        # But our calculation only sees start (10,50) and end (90,50)
+        path_data = "M10,50 A40,40 0 0,0 90,50"
+        bounds = processor.calculate_path_bounds(path_data)
+
+        assert bounds is not None
+        min_x, min_y, max_x, max_y = bounds
+        # We correctly capture x bounds
+        assert min_x == 10
+        assert max_x == 90
+        # But y bounds are approximated (should be ~10, but we get 50)
+        assert min_y == 50
+        assert max_y == 50
+        # This is a known limitation documented in the method docstring
+
     def test_calculate_path_bounds_relative_commands(self, processor: SVGProcessor) -> None:
         """Test path bounds with relative commands."""
         # Relative commands (lowercase)

@@ -146,6 +146,11 @@ class SVGProcessor:
         Handles M (moveto), L (lineto), H (horizontal), V (vertical), C (cubic bezier),
         and A (arc) commands.
 
+        Note: Arc bounds are approximated using start and end points only. This may
+        underestimate bounds for arcs that curve significantly beyond their endpoints
+        (e.g., large semicircles). For accurate bounds, svgelements library is used
+        when possible (see _adjust_viewbox_with_svgelements).
+
         Args:
             path_data: The 'd' attribute of an SVG path element.
 
@@ -267,10 +272,15 @@ class SVGProcessor:
             elif current_command in "Aa":  # Arc
                 # Arc has 7 parameters per segment: rx ry x-axis-rotation large-arc-flag sweep-flag x y
                 # Process each arc segment (7 params each)
+                # Note: This only tracks start and end points, not the actual arc curve extrema
                 for segment_start in range(0, len(coords), 7):
                     segment_coords = coords[segment_start : segment_start + 7]
                     if len(segment_coords) < 7:
                         break  # Incomplete segment
+
+                    # Add start point to bounds
+                    x_coords.append(current_x)
+                    y_coords.append(current_y)
 
                     # Extract endpoint (last two parameters)
                     x, y = segment_coords[5], segment_coords[6]
