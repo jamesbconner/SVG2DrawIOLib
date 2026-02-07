@@ -1210,3 +1210,205 @@ class TestSVGProcessor:
         assert parts[1] == 60.0
         assert parts[2] == 80.0
         assert parts[3] == 80.0
+
+    def test_adjust_svg_viewbox_with_ellipse(
+        self, processor: SVGProcessor, tmp_path: Path
+    ) -> None:
+        """Test viewBox adjustment with ellipse elements (Bug #9)."""
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+            <ellipse cx="100" cy="100" rx="30" ry="20"/>
+        </svg>"""
+        svg_file = tmp_path / "test.svg"
+        svg_file.write_text(svg_content)
+
+        tree = processor.load_svg(svg_file)
+        adjusted = processor.adjust_svg_viewbox_to_content(tree)
+
+        viewbox = adjusted.getroot().get("viewBox")
+        parts = [float(x) for x in viewbox.split()]
+        assert parts[0] == 70.0  # cx - rx
+        assert parts[1] == 80.0  # cy - ry
+        assert parts[2] == 60.0  # 2 * rx
+        assert parts[3] == 40.0  # 2 * ry
+
+    def test_adjust_svg_viewbox_with_line(
+        self, processor: SVGProcessor, tmp_path: Path
+    ) -> None:
+        """Test viewBox adjustment with line elements (Bug #9)."""
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+            <line x1="50" y1="60" x2="150" y2="140"/>
+        </svg>"""
+        svg_file = tmp_path / "test.svg"
+        svg_file.write_text(svg_content)
+
+        tree = processor.load_svg(svg_file)
+        adjusted = processor.adjust_svg_viewbox_to_content(tree)
+
+        viewbox = adjusted.getroot().get("viewBox")
+        parts = [float(x) for x in viewbox.split()]
+        assert parts[0] == 50.0  # min(x1, x2)
+        assert parts[1] == 60.0  # min(y1, y2)
+        assert parts[2] == 100.0  # max(x1, x2) - min(x1, x2)
+        assert parts[3] == 80.0  # max(y1, y2) - min(y1, y2)
+
+    def test_adjust_svg_viewbox_with_polyline(
+        self, processor: SVGProcessor, tmp_path: Path
+    ) -> None:
+        """Test viewBox adjustment with polyline elements (Bug #9)."""
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+            <polyline points="50,60 100,40 150,140 80,120"/>
+        </svg>"""
+        svg_file = tmp_path / "test.svg"
+        svg_file.write_text(svg_content)
+
+        tree = processor.load_svg(svg_file)
+        adjusted = processor.adjust_svg_viewbox_to_content(tree)
+
+        viewbox = adjusted.getroot().get("viewBox")
+        parts = [float(x) for x in viewbox.split()]
+        assert parts[0] == 50.0  # min x
+        assert parts[1] == 40.0  # min y
+        assert parts[2] == 100.0  # max x - min x (150 - 50)
+        assert parts[3] == 100.0  # max y - min y (140 - 40)
+
+    def test_adjust_svg_viewbox_with_polygon(
+        self, processor: SVGProcessor, tmp_path: Path
+    ) -> None:
+        """Test viewBox adjustment with polygon elements (Bug #9)."""
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+            <polygon points="100,50 150,150 50,150"/>
+        </svg>"""
+        svg_file = tmp_path / "test.svg"
+        svg_file.write_text(svg_content)
+
+        tree = processor.load_svg(svg_file)
+        adjusted = processor.adjust_svg_viewbox_to_content(tree)
+
+        viewbox = adjusted.getroot().get("viewBox")
+        parts = [float(x) for x in viewbox.split()]
+        assert parts[0] == 50.0  # min x
+        assert parts[1] == 50.0  # min y
+        assert parts[2] == 100.0  # max x - min x (150 - 50)
+        assert parts[3] == 100.0  # max y - min y (150 - 50)
+
+    def test_adjust_svg_viewbox_mixed_new_elements(
+        self, processor: SVGProcessor, tmp_path: Path
+    ) -> None:
+        """Test viewBox adjustment with mix of new element types (Bug #9)."""
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300">
+            <ellipse cx="100" cy="100" rx="20" ry="15"/>
+            <line x1="200" y1="50" x2="250" y2="100"/>
+            <polyline points="50,200 100,180 150,220"/>
+        </svg>"""
+        svg_file = tmp_path / "test.svg"
+        svg_file.write_text(svg_content)
+
+        tree = processor.load_svg(svg_file)
+        adjusted = processor.adjust_svg_viewbox_to_content(tree)
+
+        viewbox = adjusted.getroot().get("viewBox")
+        parts = [float(x) for x in viewbox.split()]
+        # Should encompass all elements
+        assert parts[0] == 50.0  # min x from polyline
+        assert parts[1] == 50.0  # min y from line
+        assert parts[2] == 200.0  # max x (250) - min x (50)
+        assert parts[3] == 170.0  # max y (220) - min y (50)
+
+    def test_adjust_svg_viewbox_ellipse_in_defs(
+        self, processor: SVGProcessor, tmp_path: Path
+    ) -> None:
+        """Test that ellipse in defs is skipped (Bug #9 + Bug #7)."""
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+            <defs>
+                <ellipse cx="100" cy="100" rx="80" ry="80"/>
+            </defs>
+            <rect x="60" y="60" width="80" height="80"/>
+        </svg>"""
+        svg_file = tmp_path / "test.svg"
+        svg_file.write_text(svg_content)
+
+        tree = processor.load_svg(svg_file)
+        adjusted = processor.adjust_svg_viewbox_to_content(tree)
+
+        viewbox = adjusted.getroot().get("viewBox")
+        parts = [float(x) for x in viewbox.split()]
+        # Should only consider rect, not ellipse in defs
+        assert parts[0] == 60.0
+        assert parts[1] == 60.0
+        assert parts[2] == 80.0
+        assert parts[3] == 80.0
+
+    def test_adjust_svg_viewbox_line_with_transform(
+        self, processor: SVGProcessor, tmp_path: Path
+    ) -> None:
+        """Test that line with transform is skipped (Bug #9 + Bug #8)."""
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+            <g transform="translate(50,50)">
+                <line x1="10" y1="10" x2="100" y2="100"/>
+            </g>
+            <rect x="60" y="60" width="80" height="80"/>
+        </svg>"""
+        svg_file = tmp_path / "test.svg"
+        svg_file.write_text(svg_content)
+
+        tree = processor.load_svg(svg_file)
+        adjusted = processor.adjust_svg_viewbox_to_content(tree)
+
+        viewbox = adjusted.getroot().get("viewBox")
+        parts = [float(x) for x in viewbox.split()]
+        # Should only consider rect, not transformed line
+        assert parts[0] == 60.0
+        assert parts[1] == 60.0
+        assert parts[2] == 80.0
+        assert parts[3] == 80.0
+
+    def test_adjust_svg_viewbox_polyline_comma_separated(
+        self, processor: SVGProcessor, tmp_path: Path
+    ) -> None:
+        """Test polyline with comma-separated points (Bug #9)."""
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+            <polyline points="50,60,100,40,150,140"/>
+        </svg>"""
+        svg_file = tmp_path / "test.svg"
+        svg_file.write_text(svg_content)
+
+        tree = processor.load_svg(svg_file)
+        adjusted = processor.adjust_svg_viewbox_to_content(tree)
+
+        viewbox = adjusted.getroot().get("viewBox")
+        parts = [float(x) for x in viewbox.split()]
+        assert parts[0] == 50.0
+        assert parts[1] == 40.0
+        assert parts[2] == 100.0  # 150 - 50
+        assert parts[3] == 100.0  # 140 - 40
+
+    def test_adjust_svg_viewbox_polygon_empty_points(
+        self, processor: SVGProcessor, tmp_path: Path
+    ) -> None:
+        """Test polygon with empty points attribute (Bug #9)."""
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+            <polygon points=""/>
+            <rect x="60" y="60" width="80" height="80"/>
+        </svg>"""
+        svg_file = tmp_path / "test.svg"
+        svg_file.write_text(svg_content)
+
+        tree = processor.load_svg(svg_file)
+        adjusted = processor.adjust_svg_viewbox_to_content(tree)
+
+        viewbox = adjusted.getroot().get("viewBox")
+        parts = [float(x) for x in viewbox.split()]
+        # Should only consider rect
+        assert parts[0] == 60.0
+        assert parts[1] == 60.0
+        assert parts[2] == 80.0
+        assert parts[3] == 80.0

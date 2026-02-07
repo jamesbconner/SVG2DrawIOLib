@@ -16,12 +16,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Negative Dimensions**: Added validation to ensure content dimensions are positive after clamping. Prevents invalid viewBox with negative width/height when content is entirely outside viewBox bounds.
 - **Non-Rendering Containers**: Fixed bounds calculation to skip elements inside non-rendering containers (`<defs>`, `<clipPath>`, `<mask>`, `<symbol>`, `<pattern>`, `<marker>`). Previously included definition elements in bounds, inflating calculated bounds and preventing viewBox adjustment.
 - **Transform Attributes**: Added conservative handling for elements with transform attributes. Elements with transforms (or inside transformed groups) are now skipped during bounds calculation to avoid incorrect coordinate space calculations.
+- **Unsupported SVG Elements**: Added support for additional SVG element types in viewBox adjustment: `<ellipse>`, `<line>`, `<polyline>`, and `<polygon>`. Previously only `<path>`, `<circle>`, and `<rect>` were considered, potentially causing visible content to be clipped.
+- **Parent Map Performance**: Optimized parent map construction to build once per viewBox adjustment instead of rebuilding for every element check. Reduced complexity from O(elements × tree_size) to O(tree_size), significantly improving performance for complex SVGs.
 - **Dead Code Removal**: Removed unused `calculate_svg_bounds()` method and redundant dimension calculations to improve code clarity.
 
 ### Changed
 
-- **SVG Content Bounds**: ViewBox adjustment now calculates actual content bounds from all SVG elements (paths, circles, rects) and only adjusts when padding exceeds 5% threshold on any side.
-- **Test Coverage**: Increased test coverage from 88% to 95% with comprehensive tests for edge cases and bug scenarios (131 tests total).
+- **SVG Content Bounds**: ViewBox adjustment now calculates actual content bounds from all supported SVG elements (paths, circles, rects, ellipses, lines, polylines, polygons) and only adjusts when padding exceeds 5% threshold on any side.
+- **Test Coverage**: Increased test coverage from 88% to 95% with comprehensive tests for edge cases and bug scenarios (160 tests total, 82 for svg_processor).
 
 ## [1.0.0] - 2026-02-06
 

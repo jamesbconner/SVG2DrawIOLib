@@ -279,7 +279,9 @@ class SVGProcessor:
 
         return (min_x, min_y, max_x, max_y)
 
-    def _is_in_non_rendering_container(self, element: ET.Element, root: ET.Element) -> bool:
+    def _is_in_non_rendering_container(
+        self, element: ET.Element, parent_map: dict[ET.Element, ET.Element]
+    ) -> bool:
         """Check if an element is inside a non-rendering container.
 
         Elements inside <defs>, <clipPath>, <mask>, <symbol>, <pattern>, <marker>
@@ -287,14 +289,11 @@ class SVGProcessor:
 
         Args:
             element: The element to check.
-            root: The root SVG element.
+            parent_map: Pre-built parent map for performance.
 
         Returns:
             True if element is inside a non-rendering container.
         """
-        # Build parent map
-        parent_map = {c: p for p in root.iter() for c in p}
-
         # Walk up the tree to check ancestors
         current: ET.Element | None = element
         while current is not None:
@@ -309,19 +308,18 @@ class SVGProcessor:
             current = parent
         return False
 
-    def _element_has_transform(self, element: ET.Element, root: ET.Element) -> bool:
+    def _element_has_transform(
+        self, element: ET.Element, parent_map: dict[ET.Element, ET.Element]
+    ) -> bool:
         """Check if an element or its ancestors have transform attributes.
 
         Args:
             element: The element to check.
-            root: The root SVG element.
+            parent_map: Pre-built parent map for performance.
 
         Returns:
             True if element or any ancestor has a transform attribute.
         """
-        # Build parent map
-        parent_map = {c: p for p in root.iter() for c in p}
-
         # Check the element itself
         if element.get("transform"):
             return True
@@ -365,7 +363,10 @@ class SVGProcessor:
             vb_width = float(parts[2])
             vb_height = float(parts[3])
 
-            # Calculate actual content bounds from all path elements
+            # Build parent map once for performance (Bug #10)
+            parent_map = {c: p for p in root.iter() for c in p}
+
+            # Calculate actual content bounds from all supported elements
             content_min_x = float("inf")
             content_min_y = float("inf")
             content_max_x = float("-inf")
@@ -375,10 +376,10 @@ class SVGProcessor:
             # Check path elements
             for path in root.iter("{http://www.w3.org/2000/svg}path"):
                 # Skip elements in non-rendering containers
-                if self._is_in_non_rendering_container(path, root):
+                if self._is_in_non_rendering_container(path, parent_map):
                     continue
                 # Skip elements with transforms (conservative approach)
-                if self._element_has_transform(path, root):
+                if self._element_has_transform(path, parent_map):
                     continue
 
                 d_attr = path.get("d", "")
@@ -395,10 +396,10 @@ class SVGProcessor:
             # Check circle elements
             for circle in root.iter("{http://www.w3.org/2000/svg}circle"):
                 # Skip elements in non-rendering containers
-                if self._is_in_non_rendering_container(circle, root):
+                if self._is_in_non_rendering_container(circle, parent_map):
                     continue
                 # Skip elements with transforms
-                if self._element_has_transform(circle, root):
+                if self._element_has_transform(circle, parent_map):
                     continue
 
                 cx = float(circle.get("cx", 0))
@@ -413,10 +414,10 @@ class SVGProcessor:
             # Check rect elements
             for rect in root.iter("{http://www.w3.org/2000/svg}rect"):
                 # Skip elements in non-rendering containers
-                if self._is_in_non_rendering_container(rect, root):
+                if self._is_in_non_rendering_container(rect, parent_map):
                     continue
                 # Skip elements with transforms
-                if self._element_has_transform(rect, root):
+                if self._element_has_transform(rect, parent_map):
                     continue
 
                 x = float(rect.get("x", 0))
@@ -428,6 +429,78 @@ class SVGProcessor:
                 content_max_x = max(content_max_x, x + width)
                 content_max_y = max(content_max_y, y + height)
                 found_content = True
+
+            # Check ellipse elements (Bug #9)
+            for ellipse in root.iter("{http://www.w3.org/2000/svg}ellipse"):
+                if self._is_in_non_rendering_container(ellipse, parent_map):
+                    continue
+                if self._element_has_transform(ellipse, parent_map):
+                    continue
+
+                cx = float(ellipse.get("cx", 0))
+                cy = float(ellipse.get("cy", 0))
+                rx = float(ellipse.get("rx", 0))
+                ry = float(ellipse.get("ry", 0))
+                content_min_x = min(content_min_x, cx - rx)
+                content_min_y = min(content_min_y, cy - ry)
+                content_max_x = max(content_max_x, cx + rx)
+                content_max_y = max(content_max_y, cy + ry)
+                found_content = True
+
+            # Check line elements (Bug #9)
+            for line in root.iter("{http://www.w3.org/2000/svg}line"):
+                if self._is_in_non_rendering_container(line, parent_map):
+                    continue
+                if self._element_has_transform(line, parent_map):
+                    continue
+
+                x1 = float(line.get("x1", 0))
+                y1 = float(line.get("y1", 0))
+                x2 = float(line.get("x2", 0))
+                y2 = float(line.get("y2", 0))
+                content_min_x = min(content_min_x, x1, x2)
+                content_min_y = min(content_min_y, y1, y2)
+                content_max_x = max(content_max_x, x1, x2)
+                content_max_y = max(content_max_y, y1, y2)
+                found_content = True
+
+            # Check polyline elements (Bug #9)
+            for polyline in root.iter("{http://www.w3.org/2000/svg}polyline"):
+                if self._is_in_non_rendering_container(polyline, parent_map):
+                    continue
+                if self._element_has_transform(polyline, parent_map):
+                    continue
+
+                points = polyline.get("points", "")
+                if points:
+                    coords = [float(x) for x in points.replace(",", " ").split()]
+                    if len(coords) >= 2:
+                        x_coords = coords[0::2]
+                        y_coords = coords[1::2]
+                        content_min_x = min(content_min_x, min(x_coords))
+                        content_min_y = min(content_min_y, min(y_coords))
+                        content_max_x = max(content_max_x, max(x_coords))
+                        content_max_y = max(content_max_y, max(y_coords))
+                        found_content = True
+
+            # Check polygon elements (Bug #9)
+            for polygon in root.iter("{http://www.w3.org/2000/svg}polygon"):
+                if self._is_in_non_rendering_container(polygon, parent_map):
+                    continue
+                if self._element_has_transform(polygon, parent_map):
+                    continue
+
+                points = polygon.get("points", "")
+                if points:
+                    coords = [float(x) for x in points.replace(",", " ").split()]
+                    if len(coords) >= 2:
+                        x_coords = coords[0::2]
+                        y_coords = coords[1::2]
+                        content_min_x = min(content_min_x, min(x_coords))
+                        content_min_y = min(content_min_y, min(y_coords))
+                        content_max_x = max(content_max_x, max(x_coords))
+                        content_max_y = max(content_max_y, max(y_coords))
+                        found_content = True
 
             if not found_content or content_min_x == float("inf"):
                 # No content found or couldn't calculate bounds
