@@ -14,12 +14,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **ViewBox Clamping**: Added clamping logic to prevent viewBox from expanding beyond original bounds. Ensures the method only shrinks viewBox to remove padding, never expands it to reveal clipped content.
 - **Relative Bezier Curves**: Fixed bezier curve handling to properly process multiple segments in a single command. Now correctly updates current position after each segment, preventing incorrect offset calculations for subsequent curves.
 - **Negative Dimensions**: Added validation to ensure content dimensions are positive after clamping. Prevents invalid viewBox with negative width/height when content is entirely outside viewBox bounds.
+- **Non-Rendering Containers**: Fixed bounds calculation to skip elements inside non-rendering containers (`<defs>`, `<clipPath>`, `<mask>`, `<symbol>`, `<pattern>`, `<marker>`). Previously included definition elements in bounds, inflating calculated bounds and preventing viewBox adjustment.
+- **Transform Attributes**: Added conservative handling for elements with transform attributes. Elements with transforms (or inside transformed groups) are now skipped during bounds calculation to avoid incorrect coordinate space calculations.
 - **Dead Code Removal**: Removed unused `calculate_svg_bounds()` method and redundant dimension calculations to improve code clarity.
 
 ### Changed
 
 - **SVG Content Bounds**: ViewBox adjustment now calculates actual content bounds from all SVG elements (paths, circles, rects) and only adjusts when padding exceeds 5% threshold on any side.
-- **Test Coverage**: Increased test coverage from 88% to 95% with comprehensive tests for edge cases and bug scenarios (127 tests total).
+- **Test Coverage**: Increased test coverage from 88% to 95% with comprehensive tests for edge cases and bug scenarios (131 tests total).
 
 ## [1.0.0] - 2026-02-06
 

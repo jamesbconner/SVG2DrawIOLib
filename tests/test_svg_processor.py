@@ -758,3 +758,455 @@ class TestSVGProcessor:
         assert parts[1] == 10  # min_y
         assert parts[2] == 50  # width
         assert parts[3] == 80  # height
+
+    def test_adjust_svg_viewbox_skips_defs_elements(
+        self, processor: SVGProcessor, tmp_path: Path
+    ) -> None:
+        """Test that elements inside <defs> are not included in bounds (Bug #7)."""
+        # SVG with visible rect and a clipPath definition
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+    <defs>
+        <clipPath id="clip">
+            <rect x="0" y="0" width="200" height="200"/>
+        </clipPath>
+    </defs>
+    <rect x="50" y="50" width="100" height="100" fill="#000000"/>
+</svg>"""
+        svg_file = tmp_path / "with_defs.svg"
+        svg_file.write_text(svg_content)
+
+        tree = processor.load_svg(svg_file)
+        adjusted = processor.adjust_svg_viewbox_to_content(tree)
+
+        # Should only consider the visible rect (50,50,100,100), not the clipPath rect
+        viewbox = adjusted.getroot().get("viewBox")
+        assert viewbox is not None
+        parts = [float(p) for p in viewbox.split()]
+        assert parts[0] == 50.0
+        assert parts[1] == 50.0
+        assert parts[2] == 100.0
+        assert parts[3] == 100.0
+
+    def test_adjust_svg_viewbox_skips_symbol_elements(
+        self, processor: SVGProcessor, tmp_path: Path
+    ) -> None:
+        """Test that elements inside <symbol> are not included in bounds (Bug #7)."""
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+    <symbol id="icon">
+        <circle cx="100" cy="100" r="90"/>
+    </symbol>
+    <circle cx="100" cy="100" r="40" fill="#000000"/>
+</svg>"""
+        svg_file = tmp_path / "with_symbol.svg"
+        svg_file.write_text(svg_content)
+
+        tree = processor.load_svg(svg_file)
+        adjusted = processor.adjust_svg_viewbox_to_content(tree)
+
+        # Should only consider the visible circle (60,60,80,80), not the symbol circle
+        viewbox = adjusted.getroot().get("viewBox")
+        assert viewbox is not None
+        parts = [float(p) for p in viewbox.split()]
+        assert parts[0] == 60.0
+        assert parts[1] == 60.0
+        assert parts[2] == 80.0
+        assert parts[3] == 80.0
+
+    def test_adjust_svg_viewbox_skips_transformed_elements(
+        self, processor: SVGProcessor, tmp_path: Path
+    ) -> None:
+        """Test that elements with transforms are skipped (Bug #8)."""
+        # SVG with transformed group - conservative approach skips these
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+    <g transform="translate(50, 50)">
+        <rect x="0" y="0" width="100" height="100" fill="#000000"/>
+    </g>
+    <circle cx="100" cy="100" r="40" fill="#000000"/>
+</svg>"""
+        svg_file = tmp_path / "with_transform.svg"
+        svg_file.write_text(svg_content)
+
+        tree = processor.load_svg(svg_file)
+        adjusted = processor.adjust_svg_viewbox_to_content(tree)
+
+        # Should only consider the circle (60,60,80,80), skip transformed rect
+        viewbox = adjusted.getroot().get("viewBox")
+        assert viewbox is not None
+        parts = [float(p) for p in viewbox.split()]
+        assert parts[0] == 60.0
+        assert parts[1] == 60.0
+        assert parts[2] == 80.0
+        assert parts[3] == 80.0
+
+    def test_adjust_svg_viewbox_with_mask(self, processor: SVGProcessor, tmp_path: Path) -> None:
+        """Test that elements inside <mask> are not included in bounds (Bug #7)."""
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+    <mask id="mask1">
+        <rect x="0" y="0" width="200" height="200" fill="white"/>
+    </mask>
+    <rect x="60" y="60" width="80" height="80" fill="#000000"/>
+</svg>"""
+        svg_file = tmp_path / "with_mask.svg"
+        svg_file.write_text(svg_content)
+
+        tree = processor.load_svg(svg_file)
+        adjusted = processor.adjust_svg_viewbox_to_content(tree)
+
+        # Should only consider the visible rect, not the mask rect
+        viewbox = adjusted.getroot().get("viewBox")
+        assert viewbox is not None
+        parts = [float(p) for p in viewbox.split()]
+        assert parts[0] == 60.0
+        assert parts[1] == 60.0
+        assert parts[2] == 80.0
+        assert parts[3] == 80.0
+
+    def test_get_svg_dimensions_with_units(self, processor: SVGProcessor, tmp_path: Path) -> None:
+        """Test extracting dimensions from width/height with units."""
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="100px" height="50px">
+    <rect x="10" y="10" width="80" height="30"/>
+</svg>"""
+        svg_file = tmp_path / "with_units.svg"
+        svg_file.write_text(svg_content)
+
+        tree = processor.load_svg(svg_file)
+        dims = processor.get_svg_dimensions(tree)
+        assert dims == (100, 50)
+
+    def test_calculate_path_bounds_with_close_path(self, processor: SVGProcessor) -> None:
+        """Test path bounds with Z (close path) command."""
+        path_data = "M10,10 L50,10 L50,50 L10,50 Z"
+        bounds = processor.calculate_path_bounds(path_data)
+
+        assert bounds is not None
+        min_x, min_y, max_x, max_y = bounds
+        assert min_x == 10
+        assert min_y == 10
+        assert max_x == 50
+        assert max_y == 50
+
+    def test_calculate_path_bounds_smooth_cubic(self, processor: SVGProcessor) -> None:
+        """Test path bounds with S (smooth cubic bezier) command."""
+        path_data = "M10,10 C20,5 30,5 40,10 S60,20 70,10"
+        bounds = processor.calculate_path_bounds(path_data)
+
+        assert bounds is not None
+        min_x, min_y, max_x, max_y = bounds
+        assert min_x == 10
+        assert max_x == 70
+
+    def test_calculate_path_bounds_smooth_quadratic(self, processor: SVGProcessor) -> None:
+        """Test path bounds with T (smooth quadratic) command."""
+        path_data = "M10,10 Q20,5 30,10 T50,10"
+        bounds = processor.calculate_path_bounds(path_data)
+
+        assert bounds is not None
+        min_x, min_y, max_x, max_y = bounds
+        assert min_x == 10
+        assert max_x == 50
+
+    def test_calculate_path_bounds_incomplete_segment(self, processor: SVGProcessor) -> None:
+        """Test path bounds with incomplete bezier segment."""
+        # Cubic bezier needs 6 params, only provide 4
+        path_data = "M10,10 C20,5 30,5"
+        bounds = processor.calculate_path_bounds(path_data)
+
+        assert bounds is not None
+        # Should only get the M command coordinates since segment is incomplete
+        min_x, min_y, max_x, max_y = bounds
+        assert min_x == 10
+        assert min_y == 10
+        assert max_x == 10
+        assert max_y == 10
+
+    def test_calculate_path_bounds_arc_insufficient_params(self, processor: SVGProcessor) -> None:
+        """Test path bounds with arc command with insufficient parameters."""
+        # Arc needs at least 2 params for endpoint
+        path_data = "M10,10 A30"
+        bounds = processor.calculate_path_bounds(path_data)
+
+        assert bounds is not None
+        # Should only get M command
+        min_x, min_y, max_x, max_y = bounds
+        assert min_x == 10
+        assert min_y == 10
+
+    def test_adjust_svg_viewbox_element_in_nested_defs(
+        self, processor: SVGProcessor, tmp_path: Path
+    ) -> None:
+        """Test that nested non-rendering containers are properly detected."""
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+    <defs>
+        <g>
+            <rect x="0" y="0" width="200" height="200"/>
+        </g>
+    </defs>
+    <circle cx="100" cy="100" r="40" fill="#000000"/>
+</svg>"""
+        svg_file = tmp_path / "nested_defs.svg"
+        svg_file.write_text(svg_content)
+
+        tree = processor.load_svg(svg_file)
+        adjusted = processor.adjust_svg_viewbox_to_content(tree)
+
+        # Should only consider the circle
+        viewbox = adjusted.getroot().get("viewBox")
+        assert viewbox is not None
+        parts = [float(p) for p in viewbox.split()]
+        assert parts[0] == 60.0
+        assert parts[1] == 60.0
+
+    def test_adjust_svg_viewbox_element_with_nested_transform(
+        self, processor: SVGProcessor, tmp_path: Path
+    ) -> None:
+        """Test that nested transforms are properly detected."""
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+    <g transform="translate(10, 10)">
+        <g transform="scale(2)">
+            <rect x="0" y="0" width="50" height="50" fill="#000000"/>
+        </g>
+    </g>
+    <circle cx="100" cy="100" r="40" fill="#000000"/>
+</svg>"""
+        svg_file = tmp_path / "nested_transform.svg"
+        svg_file.write_text(svg_content)
+
+        tree = processor.load_svg(svg_file)
+        adjusted = processor.adjust_svg_viewbox_to_content(tree)
+
+        # Should only consider the circle (skip transformed rect)
+        viewbox = adjusted.getroot().get("viewBox")
+        assert viewbox is not None
+        parts = [float(p) for p in viewbox.split()]
+        assert parts[0] == 60.0
+        assert parts[1] == 60.0
+
+    def test_adjust_svg_viewbox_element_with_direct_transform(
+        self, processor: SVGProcessor, tmp_path: Path
+    ) -> None:
+        """Test that elements with direct transform attribute are skipped."""
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+    <rect x="50" y="50" width="100" height="100" transform="rotate(45)" fill="#000000"/>
+    <circle cx="100" cy="100" r="30" fill="#000000"/>
+</svg>"""
+        svg_file = tmp_path / "direct_transform.svg"
+        svg_file.write_text(svg_content)
+
+        tree = processor.load_svg(svg_file)
+        adjusted = processor.adjust_svg_viewbox_to_content(tree)
+
+        # Should only consider the circle (skip transformed rect)
+        viewbox = adjusted.getroot().get("viewBox")
+        assert viewbox is not None
+        parts = [float(p) for p in viewbox.split()]
+        assert parts[0] == 70.0
+        assert parts[1] == 70.0
+        assert parts[2] == 60.0
+        assert parts[3] == 60.0
+
+    def test_get_svg_dimensions_invalid_width_value(
+        self, processor: SVGProcessor, tmp_path: Path
+    ) -> None:
+        """Test extracting dimensions when width/height have invalid values."""
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="invalid" height="50">
+    <rect x="10" y="10" width="80" height="30"/>
+</svg>"""
+        svg_file = tmp_path / "invalid_width.svg"
+        svg_file.write_text(svg_content)
+
+        tree = processor.load_svg(svg_file)
+        dims = processor.get_svg_dimensions(tree)
+        # Should return None when width/height can't be parsed
+        assert dims is None
+
+    def test_calculate_path_bounds_relative_moveto(self, processor: SVGProcessor) -> None:
+        """Test path bounds with relative moveto command."""
+        # Start at (10,10), then relative move by (5,5) to (15,15)
+        path_data = "M10,10 m5,5 L20,20"
+        bounds = processor.calculate_path_bounds(path_data)
+
+        assert bounds is not None
+        min_x, min_y, max_x, max_y = bounds
+        assert min_x == 10
+        assert min_y == 10
+        assert max_x == 20
+        assert max_y == 20
+
+    def test_calculate_path_bounds_relative_lineto(self, processor: SVGProcessor) -> None:
+        """Test path bounds with relative lineto command."""
+        # Start at (10,10), then relative line by (10,10) to (20,20)
+        path_data = "M10,10 l10,10"
+        bounds = processor.calculate_path_bounds(path_data)
+
+        assert bounds is not None
+        min_x, min_y, max_x, max_y = bounds
+        assert min_x == 10
+        assert min_y == 10
+        assert max_x == 20
+        assert max_y == 20
+
+    def test_calculate_path_bounds_relative_arc(self, processor: SVGProcessor) -> None:
+        """Test path bounds with relative arc command."""
+        # Relative arc: a rx ry x-axis-rotation large-arc-flag sweep-flag dx dy
+        path_data = "M10,10 a30,30 0 0,1 60,60"
+        bounds = processor.calculate_path_bounds(path_data)
+
+        assert bounds is not None
+        min_x, min_y, max_x, max_y = bounds
+        # Start at (10,10), relative endpoint is (60,60) from current = (70,70)
+        assert min_x == 10
+        assert min_y == 10
+        assert max_x == 70
+        assert max_y == 70
+
+    def test_calculate_path_bounds_relative_smooth_cubic(self, processor: SVGProcessor) -> None:
+        """Test path bounds with relative smooth cubic bezier."""
+        path_data = "M10,10 c10,0 20,0 20,10 s10,10 20,10"
+        bounds = processor.calculate_path_bounds(path_data)
+
+        assert bounds is not None
+        min_x, min_y, max_x, max_y = bounds
+        assert min_x == 10
+        assert min_y == 10
+        # First curve endpoint: (10,10) + (20,10) = (30,20)
+        # Second curve endpoint: (30,20) + (20,10) = (50,30)
+        assert max_x == 50
+        assert max_y == 30
+
+    def test_calculate_path_bounds_relative_quadratic(self, processor: SVGProcessor) -> None:
+        """Test path bounds with relative quadratic bezier."""
+        path_data = "M10,10 q10,0 20,10"
+        bounds = processor.calculate_path_bounds(path_data)
+
+        assert bounds is not None
+        min_x, min_y, max_x, max_y = bounds
+        assert min_x == 10
+        assert min_y == 10
+        # Endpoint: (10,10) + (20,10) = (30,20)
+        assert max_x == 30
+        assert max_y == 20
+
+    def test_calculate_path_bounds_relative_smooth_quadratic(self, processor: SVGProcessor) -> None:
+        """Test path bounds with relative smooth quadratic bezier."""
+        path_data = "M10,10 q10,0 20,10 t20,10"
+        bounds = processor.calculate_path_bounds(path_data)
+
+        assert bounds is not None
+        min_x, min_y, max_x, max_y = bounds
+        assert min_x == 10
+        assert min_y == 10
+        # First curve endpoint: (10,10) + (20,10) = (30,20)
+        # Second curve endpoint: (30,20) + (20,10) = (50,30)
+        assert max_x == 50
+        assert max_y == 30
+
+    def test_adjust_svg_viewbox_path_in_defs(self, processor: SVGProcessor, tmp_path: Path) -> None:
+        """Test that paths inside defs are skipped."""
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+    <defs>
+        <path d="M0,0 L200,200"/>
+    </defs>
+    <path d="M50,50 L150,150"/>
+</svg>"""
+        svg_file = tmp_path / "path_in_defs.svg"
+        svg_file.write_text(svg_content)
+
+        tree = processor.load_svg(svg_file)
+        adjusted = processor.adjust_svg_viewbox_to_content(tree)
+
+        # Should only consider the visible path
+        viewbox = adjusted.getroot().get("viewBox")
+        assert viewbox is not None
+        parts = [float(p) for p in viewbox.split()]
+        assert parts[0] == 50.0
+        assert parts[1] == 50.0
+        assert parts[2] == 100.0
+        assert parts[3] == 100.0
+
+    def test_adjust_svg_viewbox_circle_in_clippath(
+        self, processor: SVGProcessor, tmp_path: Path
+    ) -> None:
+        """Test that circles inside clipPath are skipped."""
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+    <clipPath id="clip">
+        <circle cx="100" cy="100" r="90"/>
+    </clipPath>
+    <circle cx="100" cy="100" r="40"/>
+</svg>"""
+        svg_file = tmp_path / "circle_in_clippath.svg"
+        svg_file.write_text(svg_content)
+
+        tree = processor.load_svg(svg_file)
+        adjusted = processor.adjust_svg_viewbox_to_content(tree)
+
+        # Should only consider the visible circle
+        viewbox = adjusted.getroot().get("viewBox")
+        assert viewbox is not None
+        parts = [float(p) for p in viewbox.split()]
+        assert parts[0] == 60.0
+        assert parts[1] == 60.0
+        assert parts[2] == 80.0
+        assert parts[3] == 80.0
+
+    def test_adjust_svg_viewbox_rect_in_pattern(
+        self, processor: SVGProcessor, tmp_path: Path
+    ) -> None:
+        """Test that rects inside pattern are skipped."""
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+    <pattern id="pattern1">
+        <rect x="0" y="0" width="200" height="200"/>
+    </pattern>
+    <rect x="60" y="60" width="80" height="80"/>
+</svg>"""
+        svg_file = tmp_path / "rect_in_pattern.svg"
+        svg_file.write_text(svg_content)
+
+        tree = processor.load_svg(svg_file)
+        adjusted = processor.adjust_svg_viewbox_to_content(tree)
+
+        # Should only consider the visible rect
+        viewbox = adjusted.getroot().get("viewBox")
+        assert viewbox is not None
+        parts = [float(p) for p in viewbox.split()]
+        assert parts[0] == 60.0
+        assert parts[1] == 60.0
+        assert parts[2] == 80.0
+        assert parts[3] == 80.0
+
+    def test_adjust_svg_viewbox_element_in_marker(
+        self, processor: SVGProcessor, tmp_path: Path
+    ) -> None:
+        """Test that elements inside marker are skipped."""
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+    <marker id="arrow">
+        <path d="M0,0 L10,5 L0,10"/>
+    </marker>
+    <circle cx="100" cy="100" r="40"/>
+</svg>"""
+        svg_file = tmp_path / "element_in_marker.svg"
+        svg_file.write_text(svg_content)
+
+        tree = processor.load_svg(svg_file)
+        adjusted = processor.adjust_svg_viewbox_to_content(tree)
+
+        # Should only consider the visible circle
+        viewbox = adjusted.getroot().get("viewBox")
+        assert viewbox is not None
+        parts = [float(p) for p in viewbox.split()]
+        assert parts[0] == 60.0
+        assert parts[1] == 60.0
+        assert parts[2] == 80.0
+        assert parts[3] == 80.0

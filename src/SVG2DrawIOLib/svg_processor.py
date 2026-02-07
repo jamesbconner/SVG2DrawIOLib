@@ -279,6 +279,62 @@ class SVGProcessor:
 
         return (min_x, min_y, max_x, max_y)
 
+    def _is_in_non_rendering_container(self, element: ET.Element, root: ET.Element) -> bool:
+        """Check if an element is inside a non-rendering container.
+
+        Elements inside <defs>, <clipPath>, <mask>, <symbol>, <pattern>, <marker>
+        are definitions and not directly rendered.
+
+        Args:
+            element: The element to check.
+            root: The root SVG element.
+
+        Returns:
+            True if element is inside a non-rendering container.
+        """
+        # Build parent map
+        parent_map = {c: p for p in root.iter() for c in p}
+
+        # Walk up the tree to check ancestors
+        current: ET.Element | None = element
+        while current is not None:
+            parent = parent_map.get(current)
+            if parent is not None:
+                tag = parent.tag
+                # Remove namespace if present
+                if "}" in tag:
+                    tag = tag.split("}", 1)[1]
+                if tag in ("defs", "clipPath", "mask", "symbol", "pattern", "marker"):
+                    return True
+            current = parent
+        return False
+
+    def _element_has_transform(self, element: ET.Element, root: ET.Element) -> bool:
+        """Check if an element or its ancestors have transform attributes.
+
+        Args:
+            element: The element to check.
+            root: The root SVG element.
+
+        Returns:
+            True if element or any ancestor has a transform attribute.
+        """
+        # Build parent map
+        parent_map = {c: p for p in root.iter() for c in p}
+
+        # Check the element itself
+        if element.get("transform"):
+            return True
+
+        # Walk up the tree to check ancestors
+        current: ET.Element | None = element
+        while current is not None:
+            parent = parent_map.get(current)
+            if parent is not None and parent.get("transform"):
+                return True
+            current = parent
+        return False
+
     def adjust_svg_viewbox_to_content(self, svg_tree: ET.ElementTree) -> ET.ElementTree:
         """Adjust SVG viewBox to match actual content bounds, removing padding.
 
@@ -318,6 +374,13 @@ class SVGProcessor:
 
             # Check path elements
             for path in root.iter("{http://www.w3.org/2000/svg}path"):
+                # Skip elements in non-rendering containers
+                if self._is_in_non_rendering_container(path, root):
+                    continue
+                # Skip elements with transforms (conservative approach)
+                if self._element_has_transform(path, root):
+                    continue
+
                 d_attr = path.get("d", "")
                 if d_attr:
                     bounds = self.calculate_path_bounds(d_attr)
@@ -331,6 +394,13 @@ class SVGProcessor:
 
             # Check circle elements
             for circle in root.iter("{http://www.w3.org/2000/svg}circle"):
+                # Skip elements in non-rendering containers
+                if self._is_in_non_rendering_container(circle, root):
+                    continue
+                # Skip elements with transforms
+                if self._element_has_transform(circle, root):
+                    continue
+
                 cx = float(circle.get("cx", 0))
                 cy = float(circle.get("cy", 0))
                 r = float(circle.get("r", 0))
@@ -342,6 +412,13 @@ class SVGProcessor:
 
             # Check rect elements
             for rect in root.iter("{http://www.w3.org/2000/svg}rect"):
+                # Skip elements in non-rendering containers
+                if self._is_in_non_rendering_container(rect, root):
+                    continue
+                # Skip elements with transforms
+                if self._element_has_transform(rect, root):
+                    continue
+
                 x = float(rect.get("x", 0))
                 y = float(rect.get("y", 0))
                 width = float(rect.get("width", 0))
