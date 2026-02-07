@@ -863,8 +863,8 @@ class SVGProcessor:
 
         # Add geometry
         geometry = ET.SubElement(cell2, "mxGeometry")
-        geometry.set("width", str(int(dimensions.width)))
-        geometry.set("height", str(int(dimensions.height)))
+        geometry.set("width", str(round(dimensions.width)))
+        geometry.set("height", str(round(dimensions.height)))
         geometry.set("as", "geometry")
 
         return mxgraph_model

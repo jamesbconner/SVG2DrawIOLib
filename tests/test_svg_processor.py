@@ -289,6 +289,57 @@ class TestSVGProcessor:
         assert geometry.get("width") == "100"
         assert geometry.get("height") == "75"
 
+    def test_dimension_rounding_consistency(self, processor: SVGProcessor, tmp_path: Path) -> None:
+        """Test that dimensions are rounded consistently in both JSON and geometry (Bug #22)."""
+        # Create an SVG with dimensions that will result in non-integer values
+        # when scaled to max_dimension=40
+        # Using 100x97.5 will give us 40x39 (39.0 exactly after rounding)
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 97.5" width="100" height="97.5">
+    <rect x="0" y="0" width="100" height="97.5" fill="#000000"/>
+</svg>"""
+        svg_file = tmp_path / "test_rounding.svg"
+        svg_file.write_text(svg_content)
+
+        # Process with max_dimension that will create non-integer intermediate values
+        icon = processor.process_svg_file(svg_file, max_dimension=40)
+
+        # Get dimensions from the icon's to_dict() method
+        icon_dict = icon.to_dict()
+        json_width = icon_dict["w"]
+        json_height = icon_dict["h"]
+
+        # Extract dimensions from the embedded geometry
+        import base64
+        import xml.etree.ElementTree as ET
+        import zlib
+
+        decoded = base64.b64decode(icon.xml_data)
+        compressed = b"\x78\x9c" + decoded + b"\x00\x00\x00\x00"
+        try:
+            decompressed = zlib.decompress(compressed)
+        except zlib.error:
+            decompressed = zlib.decompress(decoded, -zlib.MAX_WBITS)
+
+        root = ET.fromstring(decompressed)
+        geometry = root.find(".//mxGeometry")
+        assert geometry is not None
+        geometry_width = int(geometry.get("width", "0"))
+        geometry_height = int(geometry.get("height", "0"))
+
+        # Both should use round(), not int() (truncation)
+        # This ensures consistency between library JSON and embedded geometry
+        assert (
+            json_width == geometry_width
+        ), f"Width mismatch: JSON={json_width}, geometry={geometry_width}"
+        assert (
+            json_height == geometry_height
+        ), f"Height mismatch: JSON={json_height}, geometry={geometry_height}"
+
+        # Verify the expected dimensions (100x97.5 scaled to max 40 = 40x39)
+        assert json_width == 40
+        assert json_height == 39
+
     def test_adjust_svg_viewbox_to_content(self, processor: SVGProcessor, tmp_path: Path) -> None:
         """Test that SVG viewBox is adjusted to remove padding."""
         # Create SVG with square viewBox (common for icon fonts)

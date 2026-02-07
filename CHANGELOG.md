@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **CSS Color Preservation**: Fixed CSS class feature to preserve original fill colors instead of overriding all paths with the default color. Each path now gets a CSS class with its original fill color.
 - **Aspect Ratio Preservation**: Fixed default dimension calculation to maintain SVG aspect ratio instead of forcing square 40x40 dimensions. Now uses max dimension of 40 while preserving aspect ratio.
 - **Library Dimension Rounding**: Changed from truncation (`int()`) to proper rounding (`round()`) to match DrawIO's rendering behavior.
+- **Dimension Consistency**: Fixed inconsistency where library JSON metadata used `round()` but embedded geometry used `int()` (truncation), ensuring both use consistent rounding.
 
 ### Changed
 
