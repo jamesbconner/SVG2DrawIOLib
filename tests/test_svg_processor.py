@@ -645,6 +645,40 @@ class TestSVGProcessor:
         assert max_x == 70
         assert max_y == 70
 
+    def test_calculate_path_bounds_multiple_arc_segments(self, processor: SVGProcessor) -> None:
+        """Test path bounds with multiple arc segments in one command."""
+        # Two arc segments: 7 params each = 14 total params
+        # First arc: A 20 20 0 0 1 40 40 (from 10,10 to 40,40)
+        # Second arc: A 20 20 0 0 1 70 10 (from 40,40 to 70,10)
+        path_data = "M10,10 A20,20 0 0,1 40,40 20,20 0 0,1 70,10"
+        bounds = processor.calculate_path_bounds(path_data)
+
+        assert bounds is not None
+        min_x, min_y, max_x, max_y = bounds
+        # Should capture all three points: start (10,10), first arc end (40,40), second arc end (70,10)
+        assert min_x == 10
+        assert min_y == 10
+        assert max_x == 70
+        assert max_y == 40
+
+    def test_calculate_path_bounds_relative_arc_multiple_segments(
+        self, processor: SVGProcessor
+    ) -> None:
+        """Test path bounds with multiple relative arc segments."""
+        # Two relative arc segments from (10,10)
+        # First arc: a 20 20 0 0 1 30 30 -> endpoint at (40,40)
+        # Second arc: a 20 20 0 0 1 30 -30 -> endpoint at (70,10)
+        path_data = "M10,10 a20,20 0 0,1 30,30 20,20 0 0,1 30,-30"
+        bounds = processor.calculate_path_bounds(path_data)
+
+        assert bounds is not None
+        min_x, min_y, max_x, max_y = bounds
+        # Should capture: start (10,10), first arc end (40,40), second arc end (70,10)
+        assert min_x == 10
+        assert min_y == 10
+        assert max_x == 70
+        assert max_y == 40
+
     def test_calculate_path_bounds_relative_commands(self, processor: SVGProcessor) -> None:
         """Test path bounds with relative commands."""
         # Relative commands (lowercase)

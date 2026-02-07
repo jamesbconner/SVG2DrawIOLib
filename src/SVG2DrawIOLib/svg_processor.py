@@ -143,8 +143,8 @@ class SVGProcessor:
         """Calculate the bounding box of an SVG path.
 
         This extracts coordinate pairs from path data and calculates min/max bounds.
-        Handles M (moveto), L (lineto), H (horizontal), V (vertical), and C (cubic bezier).
-        Does NOT handle A (arc) commands accurately - treats arc parameters as coordinates.
+        Handles M (moveto), L (lineto), H (horizontal), V (vertical), C (cubic bezier),
+        and A (arc) commands.
 
         Args:
             path_data: The 'd' attribute of an SVG path element.
@@ -264,16 +264,22 @@ class SVGProcessor:
                             y += current_y
                         current_x, current_y = x, y
 
-            elif current_command in "Aa" and len(coords) >= 2:  # Arc - skip for now
-                # Arc has 7 parameters: rx ry x-axis-rotation large-arc-flag sweep-flag x y
-                # We'll just take the last two as the endpoint
-                x, y = coords[-2], coords[-1]
-                if current_command == "a":  # Relative
-                    x += current_x
-                    y += current_y
-                x_coords.append(x)
-                y_coords.append(y)
-                current_x, current_y = x, y
+            elif current_command in "Aa":  # Arc
+                # Arc has 7 parameters per segment: rx ry x-axis-rotation large-arc-flag sweep-flag x y
+                # Process each arc segment (7 params each)
+                for segment_start in range(0, len(coords), 7):
+                    segment_coords = coords[segment_start : segment_start + 7]
+                    if len(segment_coords) < 7:
+                        break  # Incomplete segment
+
+                    # Extract endpoint (last two parameters)
+                    x, y = segment_coords[5], segment_coords[6]
+                    if current_command == "a":  # Relative
+                        x += current_x
+                        y += current_y
+                    x_coords.append(x)
+                    y_coords.append(y)
+                    current_x, current_y = x, y
 
         if not x_coords or not y_coords:
             return None
