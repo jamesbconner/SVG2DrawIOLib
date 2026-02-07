@@ -57,6 +57,9 @@ class SVGProcessor:
     def add_css_classes(self, svg_tree: ET.ElementTree) -> ET.ElementTree:
         """Add CSS classes to SVG elements for color editing.
 
+        Preserves original fill colors by using them in the CSS rules.
+        If an element has no fill attribute, uses the default CSS color.
+
         Args:
             svg_tree: The SVG ElementTree to modify.
 
@@ -69,9 +72,9 @@ class SVGProcessor:
             raise ValueError("SVG tree has no root element")
 
         tag = self.options.namespaced_tag
-        color = self.options.css_color
+        default_color = self.options.css_color
 
-        logger.debug(f"Adding CSS classes to <{tag}> elements with color {color}")
+        logger.debug(f"Adding CSS classes to <{tag}> elements")
 
         style = ET.Element("style")
         style.set("type", "text/css")
@@ -81,7 +84,10 @@ class SVGProcessor:
         for index, element in enumerate(root.iter(tag)):
             class_name = f"path{index}"
             element.set("class", class_name)
-            style.text += f".{class_name}{{fill:{color};}}"
+
+            # Preserve original fill color, or use default if none specified
+            original_fill = element.get("fill", default_color)
+            style.text += f".{class_name}{{fill:{original_fill};}}"
             element_count += 1
 
         if element_count > 0:
@@ -333,11 +339,128 @@ class SVGProcessor:
             current = parent
         return False
 
+    def _adjust_viewbox_with_svgelements(self, svg_tree: ET.ElementTree) -> ET.ElementTree | None:
+        """Adjust viewBox using svgelements library for accurate bbox calculation.
+
+        This uses svgelements which provides bbox calculation matching browser behavior,
+        but applies our filtering logic to skip non-rendering elements.
+
+        Args:
+            svg_tree: The SVG ElementTree to adjust.
+
+        Returns:
+            Modified SVG ElementTree with adjusted viewBox, or None if calculation fails.
+
+        Raises:
+            ImportError: If svgelements is not installed.
+        """
+        # For elements that need special handling (defs, transforms, etc.),
+        # fall back to manual calculation to maintain consistent behavior
+        root = svg_tree.getroot()
+        if root is None:
+            return None
+
+        # Check if SVG has elements that need filtering
+        parent_map = {c: p for p in root.iter() for c in p}
+        has_filtered_elements = False
+
+        for elem in root.iter():
+            if self._is_in_non_rendering_container(elem, parent_map):
+                has_filtered_elements = True
+                break
+            if self._element_has_transform(elem, parent_map):
+                has_filtered_elements = True
+                break
+
+        # If we have elements that need filtering, use manual calculation
+        # to maintain consistent behavior with our filtering logic
+        if has_filtered_elements:
+            logger.debug("SVG has filtered elements, using manual bbox calculation")
+            return None
+
+        import tempfile
+
+        import svgelements
+
+        viewbox = root.get("viewBox")
+        if not viewbox:
+            return None
+
+        try:
+            parts = viewbox.split()
+            if len(parts) != 4:
+                return None
+
+            vb_x = float(parts[0])
+            vb_y = float(parts[1])
+            vb_width = float(parts[2])
+            vb_height = float(parts[3])
+
+            # Write SVG to temp file for svgelements to parse
+            with tempfile.NamedTemporaryFile(
+                mode="w", suffix=".svg", delete=False, encoding="utf-8"
+            ) as f:
+                svg_tree.write(f, encoding="unicode", xml_declaration=True)
+                temp_path = f.name
+
+            try:
+                # Parse with svgelements
+                svg = svgelements.SVG.parse(temp_path)
+                bbox = svg.bbox()
+
+                if bbox:
+                    content_min_x, content_min_y, content_max_x, content_max_y = bbox
+
+                    # Clamp to original viewBox bounds
+                    vb_max_x = vb_x + vb_width
+                    vb_max_y = vb_y + vb_height
+
+                    content_min_x = max(content_min_x, vb_x)
+                    content_min_y = max(content_min_y, vb_y)
+                    content_max_x = min(content_max_x, vb_max_x)
+                    content_max_y = min(content_max_y, vb_max_y)
+
+                    content_width = content_max_x - content_min_x
+                    content_height = content_max_y - content_min_y
+
+                    if content_width <= 0 or content_height <= 0:
+                        logger.debug("Content outside viewBox bounds, skipping adjustment")
+                        return None
+
+                    # Update viewBox and dimensions
+                    root.set(
+                        "viewBox",
+                        f"{content_min_x} {content_min_y} {content_width} {content_height}",
+                    )
+                    root.set("width", str(content_width))
+                    root.set("height", str(content_height))
+
+                    logger.debug(
+                        f"Adjusted viewBox using svgelements from '{vb_x} {vb_y} {vb_width} {vb_height}' "
+                        f"to '{content_min_x} {content_min_y} {content_width} {content_height}'"
+                    )
+
+                    return svg_tree
+            finally:
+                # Clean up temp file
+                import contextlib
+                import os
+
+                with contextlib.suppress(Exception):
+                    os.unlink(temp_path)
+
+        except Exception as e:
+            logger.debug(f"svgelements bbox calculation failed: {e}")
+            return None
+
+        return None
+
     def adjust_svg_viewbox_to_content(self, svg_tree: ET.ElementTree) -> ET.ElementTree:
         """Adjust SVG viewBox to match actual content bounds, removing padding.
 
-        This calculates the actual bounding box of SVG content and adjusts
-        the viewBox to match, eliminating any padding.
+        Uses svgelements library for pixel-perfect bounding box calculation that matches
+        DrawIO's native behavior. Falls back to manual calculation for complex SVGs with
+        transforms or non-rendering containers.
 
         Args:
             svg_tree: The SVG ElementTree to adjust.
@@ -345,6 +468,22 @@ class SVGProcessor:
         Returns:
             Modified SVG ElementTree with adjusted viewBox.
         """
+        # Try using svgelements for accurate bbox
+        try:
+            result = self._adjust_viewbox_with_svgelements(svg_tree)
+            if result is not None:
+                return result
+            # Fall through to manual calculation if svgelements fails
+            logger.debug("svgelements bbox calculation failed, falling back to manual")
+        except ImportError:
+            logger.warning(
+                "svgelements not installed, falling back to manual bbox calculation. "
+                "Install with: pip install svgelements"
+            )
+        except Exception as e:
+            logger.debug(f"svgelements bbox calculation error: {e}, falling back to manual")
+
+        # Manual bbox calculation (fallback)
         root = svg_tree.getroot()
         if root is None:
             return svg_tree
@@ -526,32 +665,21 @@ class SVGProcessor:
                 logger.debug("Content is entirely outside viewBox bounds, skipping adjustment")
                 return svg_tree
 
-            # Only adjust if there's significant padding (more than 5% on any side)
-            # Account for viewBox origin when calculating padding
-            padding_threshold = min(vb_width, vb_height) * 0.05
+            # Always adjust viewBox to match actual content bounds (Bug #12)
+            # This removes any padding, no matter how small
+            # Keep decimal precision in viewBox (matching DrawIO's behavior)
+            root.set("viewBox", f"{content_min_x} {content_min_y} {content_width} {content_height}")
 
-            left_padding = content_min_x - vb_x
-            top_padding = content_min_y - vb_y
-            right_padding = vb_max_x - content_max_x
-            bottom_padding = vb_max_y - content_max_y
+            # Also update width and height attributes to match the adjusted viewBox
+            # Keep decimal precision (matching DrawIO's behavior)
+            root.set("width", str(content_width))
+            root.set("height", str(content_height))
 
-            has_padding = (
-                left_padding > padding_threshold
-                or top_padding > padding_threshold
-                or right_padding > padding_threshold
-                or bottom_padding > padding_threshold
+            logger.debug(
+                f"Adjusted viewBox from '{vb_x} {vb_y} {vb_width} {vb_height}' "
+                f"to '{content_min_x} {content_min_y} {content_width} {content_height}' "
+                f"based on actual content bounds"
             )
-
-            if has_padding:
-                # Adjust viewBox to match content bounds
-                root.set(
-                    "viewBox", f"{content_min_x} {content_min_y} {content_width} {content_height}"
-                )
-                logger.debug(
-                    f"Adjusted viewBox from '{vb_x} {vb_y} {vb_width} {vb_height}' "
-                    f"to '{content_min_x} {content_min_y} {content_width} {content_height}' "
-                    f"based on actual content bounds"
-                )
 
             return svg_tree
 
@@ -575,11 +703,15 @@ class SVGProcessor:
         svg_dims = self.get_svg_dimensions(svg_tree)
 
         if max_dimension is None:
-            # Use default dimensions
-            return SVGDimensions.from_fixed_dimensions(40, 40)
+            # Use default max dimension of 40, but maintain aspect ratio
+            max_dimension = 40.0
+            logger.debug("No max_dimension specified, using default: 40")
 
         if svg_dims is None:
             # Can't determine aspect ratio, use square
+            logger.debug(
+                f"Could not determine SVG dimensions, using square: {max_dimension}x{max_dimension}"
+            )
             return SVGDimensions.from_fixed_dimensions(max_dimension, max_dimension)
 
         # Calculate aspect ratio and scale
@@ -590,7 +722,12 @@ class SVGProcessor:
             )
             return SVGDimensions.from_fixed_dimensions(max_dimension, max_dimension)
         aspect_ratio = width / height
-        return SVGDimensions.from_max_dimension(max_dimension, aspect_ratio)
+        dims = SVGDimensions.from_max_dimension(max_dimension, aspect_ratio)
+        logger.debug(
+            f"Calculated dimensions: {dims.width:.1f}x{dims.height:.1f} "
+            f"(aspect ratio: {aspect_ratio:.2f}, max: {max_dimension})"
+        )
+        return dims
 
     def svg_to_data_uri(self, svg_tree: ET.ElementTree) -> str:
         """Convert SVG to base64-encoded data URI.
@@ -646,6 +783,8 @@ class SVGProcessor:
         # Add CSS if requested
         if self.options.add_css:
             svg_tree = self.add_css_classes(svg_tree)
+        else:
+            logger.debug("CSS classes not added (add_css=False)")
 
         # Calculate dimensions
         if fixed_dimensions is not None:

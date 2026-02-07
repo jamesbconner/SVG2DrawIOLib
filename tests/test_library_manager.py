@@ -475,3 +475,13 @@ class TestLibraryManager:
         assert icon_a_3.xml_data == b"data_2"
         assert icon_a_2.xml_data == b"data_3"
         assert icon_a_4.xml_data == b"data_4"
+
+    def test_load_library_with_empty_root_text(
+        self, manager: LibraryManager, tmp_path: Path
+    ) -> None:
+        """Test loading a library file with empty root text."""
+        library_file = tmp_path / "empty_text.xml"
+        library_file.write_text('<?xml version="1.0" encoding="utf-8"?>\n<mxlibrary></mxlibrary>')
+
+        icons = manager.load_library(library_file)
+        assert icons == []

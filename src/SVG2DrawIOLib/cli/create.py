@@ -191,7 +191,7 @@ def create(
             logger.info(f"Using proportional scaling with max dimension: {max_size}")
         else:
             max_dimension = None
-            logger.info("Using default dimensions: 40x40")
+            logger.info("Using default sizing: max dimension 40 (aspect ratio preserved)")
 
         # Create processing options
         options = SVGProcessingOptions(
@@ -227,6 +227,7 @@ def create(
         manager = LibraryManager()
         metadata = manager.create_library(icons, output)
 
+        logger.info(f"Successfully created library: {output}")
         console.print(
             f"[green]✓[/green] Created library with {metadata.icon_count} icon(s): "
             f"[cyan]{output}[/cyan]"

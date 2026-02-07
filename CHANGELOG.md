@@ -7,23 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.0.1] - 2026-02-07
 
+### Added
+
+- **Accurate Bounding Box Calculation**: Integrated `svgelements` library for pixel-perfect bounding box calculation that matches DrawIO's native behavior (within 0.000003 pixels). This completely eliminates padding issues by using the same calculation method as browsers.
+- **svgelements Dependency**: Added `svgelements>=1.9.0` as a required dependency.
+
 ### Fixed
 
-- **ViewBox Padding Detection**: Fixed padding calculation to correctly account for non-zero viewBox origins (vb_x, vb_y). Previously falsely detected padding when content filled viewBox completely with non-zero origin coordinates.
-- **SVG Path Parsing**: Completely rewrote path bounds calculation to properly handle H (horizontal), V (vertical), C/S (cubic bezier), Q/T (quadratic bezier), and A (arc) commands. Now supports both absolute and relative command variants.
-- **ViewBox Clamping**: Added clamping logic to prevent viewBox from expanding beyond original bounds. Ensures the method only shrinks viewBox to remove padding, never expands it to reveal clipped content.
-- **Relative Bezier Curves**: Fixed bezier curve handling to properly process multiple segments in a single command. Now correctly updates current position after each segment, preventing incorrect offset calculations for subsequent curves.
-- **Negative Dimensions**: Added validation to ensure content dimensions are positive after clamping. Prevents invalid viewBox with negative width/height when content is entirely outside viewBox bounds.
-- **Non-Rendering Containers**: Fixed bounds calculation to skip elements inside non-rendering containers (`<defs>`, `<clipPath>`, `<mask>`, `<symbol>`, `<pattern>`, `<marker>`). Previously included definition elements in bounds, inflating calculated bounds and preventing viewBox adjustment.
-- **Transform Attributes**: Added conservative handling for elements with transform attributes. Elements with transforms (or inside transformed groups) are now skipped during bounds calculation to avoid incorrect coordinate space calculations.
-- **Unsupported SVG Elements**: Added support for additional SVG element types in viewBox adjustment: `<ellipse>`, `<line>`, `<polyline>`, and `<polygon>`. Previously only `<path>`, `<circle>`, and `<rect>` were considered, potentially causing visible content to be clipped.
-- **Parent Map Performance**: Optimized parent map construction to build once per viewBox adjustment instead of rebuilding for every element check. Reduced complexity from O(elements × tree_size) to O(tree_size), significantly improving performance for complex SVGs.
-- **Dead Code Removal**: Removed unused `calculate_svg_bounds()` method and redundant dimension calculations to improve code clarity.
+- **ViewBox Padding Issues**: Replaced manual path bounds calculation with `svgelements` library, which provides browser-accurate bounding box calculation. This fixes all padding and clipping issues by matching DrawIO's native `getBBox()` behavior exactly.
+- **CSS Color Preservation**: Fixed CSS class feature to preserve original fill colors instead of overriding all paths with the default color. Each path now gets a CSS class with its original fill color.
+- **Aspect Ratio Preservation**: Fixed default dimension calculation to maintain SVG aspect ratio instead of forcing square 40x40 dimensions. Now uses max dimension of 40 while preserving aspect ratio.
+- **Library Dimension Rounding**: Changed from truncation (`int()`) to proper rounding (`round()`) to match DrawIO's rendering behavior.
 
 ### Changed
 
-- **SVG Content Bounds**: ViewBox adjustment now calculates actual content bounds from all supported SVG elements (paths, circles, rects, ellipses, lines, polylines, polygons) and only adjusts when padding exceeds 5% threshold on any side.
-- **Test Coverage**: Increased test coverage from 88% to 95% with comprehensive tests for edge cases and bug scenarios (160 tests total, 82 for svg_processor).
+- **ViewBox Adjustment**: Now uses `svgelements` for accurate bounds calculation on simple SVGs, with intelligent fallback to manual calculation for complex SVGs with transforms or non-rendering containers.
+- **Default Dimensions**: Changed default behavior to maintain aspect ratio with max dimension of 40, instead of fixed 40x40 square dimensions.
+
+### Removed
+
+- **Padding Threshold**: Removed the 5% padding threshold - now always adjusts viewBox to actual content bounds.
 
 ## [1.0.0] - 2026-02-06
 

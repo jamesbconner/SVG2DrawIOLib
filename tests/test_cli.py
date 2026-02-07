@@ -854,6 +854,25 @@ class TestRemoveCommandEdgeCases:
 
         assert result.exit_code == 1
 
+    def test_remove_nonexistent_icons(
+        self, runner: CliRunner, sample_svg: Path, tmp_path: Path
+    ) -> None:
+        """Test removing icons that don't exist in the library."""
+        library = tmp_path / "library.xml"
+
+        # Create initial library
+        result = runner.invoke(cli, ["create", str(sample_svg), "-o", str(library)])
+        assert result.exit_code == 0
+
+        # Try to remove nonexistent icons
+        result = runner.invoke(
+            cli,
+            ["remove", str(library), "nonexistent1", "nonexistent2"],
+        )
+
+        assert result.exit_code == 0
+        assert "No icons were removed" in result.output
+
 
 class TestListCommandEdgeCases:
     """Additional tests for list command edge cases."""

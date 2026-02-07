@@ -29,8 +29,12 @@ class LibraryManager:
         """
         logger.info(f"Creating library with {len(icons)} icon(s)")
 
+        if len(icons) == 0:
+            logger.warning("Creating library with no icons")
+
         # Sort icons alphabetically by name
         sorted_icons = sorted(icons, key=lambda icon: icon.name)
+        logger.debug(f"Sorted {len(sorted_icons)} icon(s) alphabetically")
 
         # Convert to library JSON format
         library_data = [icon.to_dict() for icon in sorted_icons]
@@ -246,7 +250,15 @@ class LibraryManager:
         filtered_icons = [icon for icon in existing_icons if icon.name not in names_to_remove]
 
         removed_count = len(existing_icons) - len(filtered_icons)
-        logger.info(f"Removed {removed_count} icon(s)")
+        if removed_count == 0:
+            logger.warning("No icons were removed (none of the specified names found)")
+        else:
+            logger.info(f"Removed {removed_count} icon(s)")
+            for name in icon_names:
+                if any(icon.name == name for icon in existing_icons) and not any(
+                    icon.name == name for icon in filtered_icons
+                ):
+                    logger.debug(f"Removed icon: {name}")
 
         # Save updated library
         metadata = self.create_library(filtered_icons, library_path)
@@ -265,5 +277,7 @@ class LibraryManager:
             FileNotFoundError: If the library file does not exist.
             ValueError: If the library file is invalid.
         """
+        logger.debug(f"Listing icons in library: {library_path}")
         icons = self.load_library(library_path)
+        logger.debug(f"Found {len(icons)} icon(s) in library")
         return [icon.name for icon in icons]
