@@ -133,91 +133,12 @@ class SVGProcessor:
         logger.warning("Could not determine SVG dimensions")
         return None
 
-    def calculate_svg_bounds(
-        self, svg_tree: ET.ElementTree
-    ) -> tuple[float, float, float, float] | None:
-        """Calculate the actual bounding box of SVG content.
-
-        This finds the min/max x/y coordinates of all path, rect, circle, etc.
-        elements to determine the actual content bounds, ignoring whitespace.
-
-        Args:
-            svg_tree: The SVG ElementTree.
-
-        Returns:
-            Tuple of (min_x, min_y, width, height) or None if bounds cannot be determined.
-        """
-        root = svg_tree.getroot()
-        if root is None:
-            return None
-
-        # For now, we'll use a simpler approach: check if there's significant
-        # padding in the viewBox by looking at common SVG elements
-        # A full implementation would parse path data, which is complex
-
-        # Try to get viewBox
-        viewbox = root.get("viewBox")
-        if not viewbox:
-            return None
-
-        try:
-            parts = viewbox.split()
-            if len(parts) == 4:
-                vb_x = float(parts[0])
-                vb_y = float(parts[1])
-                vb_width = float(parts[2])
-                vb_height = float(parts[3])
-
-                # Check for common patterns where content doesn't fill viewBox
-                # Look for path, rect, circle elements and their bounds
-                min_x, min_y = float("inf"), float("inf")
-                max_x, max_y = float("-inf"), float("-inf")
-                found_elements = False
-
-                # Check circles
-                for circle in root.iter("{http://www.w3.org/2000/svg}circle"):
-                    found_elements = True
-                    cx = float(circle.get("cx", 0))
-                    cy = float(circle.get("cy", 0))
-                    r = float(circle.get("r", 0))
-                    min_x = min(min_x, cx - r)
-                    min_y = min(min_y, cy - r)
-                    max_x = max(max_x, cx + r)
-                    max_y = max(max_y, cy + r)
-
-                # Check rects
-                for rect in root.iter("{http://www.w3.org/2000/svg}rect"):
-                    found_elements = True
-                    x = float(rect.get("x", 0))
-                    y = float(rect.get("y", 0))
-                    width = float(rect.get("width", 0))
-                    height = float(rect.get("height", 0))
-                    min_x = min(min_x, x)
-                    min_y = min(min_y, y)
-                    max_x = max(max_x, x + width)
-                    max_y = max(max_y, y + height)
-
-                # For paths, we'd need to parse the 'd' attribute which is complex
-                # Instead, use a heuristic: if viewBox starts at 0,0 but we suspect
-                # padding, return adjusted bounds
-
-                if found_elements and min_x != float("inf"):
-                    # We found some elements, return their bounds
-                    return (min_x, min_y, max_x - min_x, max_y - min_y)
-
-                # If no simple elements found, assume viewBox is correct
-                return (vb_x, vb_y, vb_width, vb_height)
-
-        except (ValueError, IndexError):
-            pass
-
-        return None
-
     def calculate_path_bounds(self, path_data: str) -> tuple[float, float, float, float] | None:
         """Calculate the bounding box of an SVG path.
 
         This extracts coordinate pairs from path data and calculates min/max bounds.
-        Works for simple paths with M (moveto) and L (lineto) commands.
+        Handles M (moveto), L (lineto), H (horizontal), V (vertical), and C (cubic bezier).
+        Does NOT handle A (arc) commands accurately - treats arc parameters as coordinates.
 
         Args:
             path_data: The 'd' attribute of an SVG path element.
@@ -227,17 +148,106 @@ class SVGProcessor:
         """
         import re
 
-        # Extract all numbers from the path data
-        numbers = re.findall(r"[-+]?\d*\.?\d+", path_data)
-        if len(numbers) < 2:
+        if not path_data:
             return None
 
-        # Convert to floats
-        coords = [float(n) for n in numbers]
+        # Remove command letters but track H and V commands
+        # H commands have only x coordinate, V commands have only y coordinate
+        x_coords = []
+        y_coords = []
 
-        # Treat as alternating x,y coordinates
-        x_coords = coords[0::2]  # Even indices
-        y_coords = coords[1::2]  # Odd indices
+        # Split by command letters while keeping track of what command we're in
+        # This is a simplified parser that handles common cases
+        parts = re.split(r"([MmLlHhVvCcSsQqTtAaZz])", path_data)
+
+        current_command = None
+        current_x = 0.0
+        current_y = 0.0
+
+        for part in parts:
+            part = part.strip()
+            if not part:
+                continue
+
+            # Check if this is a command letter
+            if part in "MmLlHhVvCcSsQqTtAaZz":
+                current_command = part
+                continue
+
+            # Extract numbers from this segment
+            numbers = re.findall(r"[-+]?\d*\.?\d+", part)
+            if not numbers:
+                continue
+
+            coords = [float(n) for n in numbers]
+
+            # Process based on current command
+            if current_command is None:
+                continue
+
+            if current_command in "Mm":  # Moveto
+                for j in range(0, len(coords), 2):
+                    if j + 1 < len(coords):
+                        x, y = coords[j], coords[j + 1]
+                        if current_command == "m":  # Relative
+                            x += current_x
+                            y += current_y
+                        x_coords.append(x)
+                        y_coords.append(y)
+                        current_x, current_y = x, y
+
+            elif current_command in "Ll":  # Lineto
+                for j in range(0, len(coords), 2):
+                    if j + 1 < len(coords):
+                        x, y = coords[j], coords[j + 1]
+                        if current_command == "l":  # Relative
+                            x += current_x
+                            y += current_y
+                        x_coords.append(x)
+                        y_coords.append(y)
+                        current_x, current_y = x, y
+
+            elif current_command in "Hh":  # Horizontal lineto
+                for x in coords:
+                    if current_command == "h":  # Relative
+                        x += current_x
+                    x_coords.append(x)
+                    y_coords.append(current_y)
+                    current_x = x
+
+            elif current_command in "Vv":  # Vertical lineto
+                for y in coords:
+                    if current_command == "v":  # Relative
+                        y += current_y
+                    x_coords.append(current_x)
+                    y_coords.append(y)
+                    current_y = y
+
+            elif current_command in "CcSsQqTt":  # Bezier curves
+                # For curves, just use all coordinate pairs as potential bounds
+                # This is approximate but safe (may overestimate bounds)
+                for j in range(0, len(coords), 2):
+                    if j + 1 < len(coords):
+                        x, y = coords[j], coords[j + 1]
+                        if current_command.islower():  # Relative
+                            x += current_x
+                            y += current_y
+                        x_coords.append(x)
+                        y_coords.append(y)
+                        # Update current position to last point
+                        if j == len(coords) - 2:
+                            current_x, current_y = x, y
+
+            elif current_command in "Aa" and len(coords) >= 2:  # Arc - skip for now
+                # Arc has 7 parameters: rx ry x-axis-rotation large-arc-flag sweep-flag x y
+                # We'll just take the last two as the endpoint
+                x, y = coords[-2], coords[-1]
+                if current_command == "a":  # Relative
+                    x += current_x
+                    y += current_y
+                x_coords.append(x)
+                y_coords.append(y)
+                current_x, current_y = x, y
 
         if not x_coords or not y_coords:
             return None
@@ -330,14 +340,34 @@ class SVGProcessor:
             content_width = content_max_x - content_min_x
             content_height = content_max_y - content_min_y
 
+            # Clamp content bounds to original viewBox to prevent expansion
+            # Only shrink the viewBox, never expand it
+            vb_max_x = vb_x + vb_width
+            vb_max_y = vb_y + vb_height
+
+            content_min_x = max(content_min_x, vb_x)
+            content_min_y = max(content_min_y, vb_y)
+            content_max_x = min(content_max_x, vb_max_x)
+            content_max_y = min(content_max_y, vb_max_y)
+
+            # Recalculate dimensions after clamping
+            content_width = content_max_x - content_min_x
+            content_height = content_max_y - content_min_y
+
             # Only adjust if there's significant padding (more than 5% on any side)
+            # Account for viewBox origin when calculating padding
             padding_threshold = min(vb_width, vb_height) * 0.05
 
+            left_padding = content_min_x - vb_x
+            top_padding = content_min_y - vb_y
+            right_padding = vb_max_x - content_max_x
+            bottom_padding = vb_max_y - content_max_y
+
             has_padding = (
-                content_min_x > padding_threshold
-                or content_min_y > padding_threshold
-                or (vb_width - content_max_x) > padding_threshold
-                or (vb_height - content_max_y) > padding_threshold
+                left_padding > padding_threshold
+                or top_padding > padding_threshold
+                or right_padding > padding_threshold
+                or bottom_padding > padding_threshold
             )
 
             if has_padding:

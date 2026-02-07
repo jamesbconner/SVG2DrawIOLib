@@ -372,15 +372,16 @@ class TestSVGProcessor:
         svg_bytes = base64.b64decode(svg_b64)
         svg_root = ET.fromstring(svg_bytes)
 
-        # Check that viewBox is adjusted to actual circle bounds (20,20,60,60)
+        # Check that viewBox is adjusted to actual circle bounds
         # Circle at cx=50, cy=50, r=30 means bounds are (20,20) to (80,80)
+        # But viewBox is (15,25,80,60), so clamped to (20,25) to (80,80)
         viewbox = svg_root.get("viewBox")
         assert viewbox is not None
         parts = viewbox.split()
-        assert parts[0] == "20.0"  # min_x = cx - r = 50 - 30
-        assert parts[1] == "20.0"  # min_y = cy - r = 50 - 30
-        assert parts[2] == "60.0"  # width = 2*r = 60
-        assert parts[3] == "60.0"  # height = 2*r = 60
+        assert parts[0] == "20.0"  # min_x = max(cx - r, vb_x) = max(20, 15) = 20
+        assert parts[1] == "25.0"  # min_y = max(cy - r, vb_y) = max(20, 25) = 25
+        assert parts[2] == "60.0"  # width = 80 - 20
+        assert parts[3] == "55.0"  # height = 80 - 25
 
     def test_calculate_path_bounds_simple_path(self, processor: SVGProcessor) -> None:
         """Test calculating bounds from a simple path."""
@@ -524,61 +525,175 @@ class TestSVGProcessor:
         assert parts[2] == 190.0  # width
         assert parts[3] == 180.0  # height
 
-    def test_calculate_svg_bounds_no_root(self, processor: SVGProcessor) -> None:
-        """Test calculate_svg_bounds with tree that has no root."""
-        tree = ET.ElementTree()
-        result = processor.calculate_svg_bounds(tree)
-        assert result is None
-
-    def test_calculate_svg_bounds_no_viewbox(self, processor: SVGProcessor, tmp_path: Path) -> None:
-        """Test calculate_svg_bounds when SVG has no viewBox."""
-        svg_content = """<?xml version="1.0" encoding="utf-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100">
-    <circle cx="50" cy="50" r="30"/>
-</svg>"""
-        svg_file = tmp_path / "no_vb.svg"
-        svg_file.write_text(svg_content)
-
-        tree = processor.load_svg(svg_file)
-        result = processor.calculate_svg_bounds(tree)
-        assert result is None
-
-    def test_calculate_svg_bounds_with_circles(
+    def test_adjust_svg_viewbox_non_zero_origin(
         self, processor: SVGProcessor, tmp_path: Path
     ) -> None:
-        """Test calculate_svg_bounds with circle elements."""
+        """Test that padding detection accounts for non-zero viewBox origin (Bug #1)."""
+        # ViewBox starts at (100, 100) with size 50x50
+        # Content fills it completely from (100,100) to (150,150)
         svg_content = """<?xml version="1.0" encoding="utf-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
-    <circle cx="100" cy="100" r="50"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="100 100 50 50">
+    <rect x="100" y="100" width="50" height="50" fill="#000000"/>
 </svg>"""
-        svg_file = tmp_path / "circle.svg"
+        svg_file = tmp_path / "non_zero_origin.svg"
         svg_file.write_text(svg_content)
 
         tree = processor.load_svg(svg_file)
-        result = processor.calculate_svg_bounds(tree)
+        adjusted = processor.adjust_svg_viewbox_to_content(tree)
 
-        assert result is not None
-        min_x, min_y, width, height = result
-        assert min_x == 50.0
-        assert min_y == 50.0
-        assert width == 100.0
-        assert height == 100.0
+        # Should remain unchanged since content fills viewBox completely
+        assert adjusted.getroot().get("viewBox") == "100 100 50 50"
 
-    def test_calculate_svg_bounds_with_rects(self, processor: SVGProcessor, tmp_path: Path) -> None:
-        """Test calculate_svg_bounds with rect elements."""
+    def test_adjust_svg_viewbox_non_zero_origin_with_padding(
+        self, processor: SVGProcessor, tmp_path: Path
+    ) -> None:
+        """Test padding detection with non-zero origin and actual padding (Bug #1)."""
+        # ViewBox starts at (100, 100) with size 100x100
+        # Content is from (110,110) to (180,180) - has 10px padding on all sides
         svg_content = """<?xml version="1.0" encoding="utf-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
-    <rect x="25" y="25" width="150" height="150"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="100 100 100 100">
+    <rect x="110" y="110" width="70" height="70" fill="#000000"/>
 </svg>"""
-        svg_file = tmp_path / "rect.svg"
+        svg_file = tmp_path / "non_zero_with_padding.svg"
         svg_file.write_text(svg_content)
 
         tree = processor.load_svg(svg_file)
-        result = processor.calculate_svg_bounds(tree)
+        adjusted = processor.adjust_svg_viewbox_to_content(tree)
 
-        assert result is not None
-        min_x, min_y, width, height = result
-        assert min_x == 25.0
-        assert min_y == 25.0
-        assert width == 150.0
-        assert height == 150.0
+        # Should adjust to remove padding (10px > 5% of 100px)
+        assert adjusted.getroot().get("viewBox") == "110.0 110.0 70.0 70.0"
+
+    def test_calculate_path_bounds_with_h_v_commands(self, processor: SVGProcessor) -> None:
+        """Test path bounds with H (horizontal) and V (vertical) commands (Bug #2)."""
+        # Path with H and V commands
+        path_data = "M10,20 H50 V60 H30 V40 Z"
+        bounds = processor.calculate_path_bounds(path_data)
+
+        assert bounds is not None
+        min_x, min_y, max_x, max_y = bounds
+        assert min_x == 10
+        assert min_y == 20
+        assert max_x == 50
+        assert max_y == 60
+
+    def test_calculate_path_bounds_with_arc_command(self, processor: SVGProcessor) -> None:
+        """Test path bounds with A (arc) command (Bug #2)."""
+        # Arc command: A rx ry x-axis-rotation large-arc-flag sweep-flag x y
+        path_data = "M10,10 A30,30 0 0,1 70,70"
+        bounds = processor.calculate_path_bounds(path_data)
+
+        assert bounds is not None
+        min_x, min_y, max_x, max_y = bounds
+        # Should at least capture start and end points
+        assert min_x == 10
+        assert min_y == 10
+        assert max_x == 70
+        assert max_y == 70
+
+    def test_calculate_path_bounds_relative_commands(self, processor: SVGProcessor) -> None:
+        """Test path bounds with relative commands."""
+        # Relative commands (lowercase)
+        path_data = "M10,10 l20,0 v20 h-20 z"
+        bounds = processor.calculate_path_bounds(path_data)
+
+        assert bounds is not None
+        min_x, min_y, max_x, max_y = bounds
+        assert min_x == 10
+        assert min_y == 10
+        assert max_x == 30
+        assert max_y == 30
+
+    def test_adjust_svg_viewbox_prevents_expansion(
+        self, processor: SVGProcessor, tmp_path: Path
+    ) -> None:
+        """Test that viewBox adjustment never expands beyond original bounds (Bug #4)."""
+        # Content extends beyond viewBox on one side
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+    <rect x="-10" y="10" width="90" height="80" fill="#000000"/>
+</svg>"""
+        svg_file = tmp_path / "extends_beyond.svg"
+        svg_file.write_text(svg_content)
+
+        tree = processor.load_svg(svg_file)
+        adjusted = processor.adjust_svg_viewbox_to_content(tree)
+
+        # Should clamp to original viewBox bounds
+        viewbox = adjusted.getroot().get("viewBox")
+        assert viewbox is not None
+        parts = [float(p) for p in viewbox.split()]
+        # Content would be (-10,10) to (80,90), but should clamp to (0,10) to (80,90)
+        assert parts[0] >= 0  # min_x clamped to vb_x
+        assert parts[1] == 10  # min_y
+        assert parts[0] + parts[2] <= 100  # max_x clamped to vb_x + vb_width
+        assert parts[1] + parts[3] <= 100  # max_y clamped to vb_y + vb_height
+
+    def test_adjust_svg_viewbox_clamps_all_sides(
+        self, processor: SVGProcessor, tmp_path: Path
+    ) -> None:
+        """Test that clamping works on all sides (Bug #4)."""
+        # Content extends beyond viewBox on all sides
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="50 50 100 100">
+    <rect x="40" y="40" width="120" height="120" fill="#000000"/>
+</svg>"""
+        svg_file = tmp_path / "extends_all_sides.svg"
+        svg_file.write_text(svg_content)
+
+        tree = processor.load_svg(svg_file)
+        adjusted = processor.adjust_svg_viewbox_to_content(tree)
+
+        # Should clamp to original viewBox (50,50,100,100)
+        # Content is (40,40) to (160,160), should clamp to (50,50) to (150,150)
+        # After clamping, content fills entire viewBox, so no padding detected
+        viewbox = adjusted.getroot().get("viewBox")
+        assert viewbox == "50 50 100 100"  # Unchanged since no padding after clamping
+
+    def test_calculate_path_bounds_with_curves(self, processor: SVGProcessor) -> None:
+        """Test path bounds with cubic bezier curves."""
+        # Cubic bezier: C x1 y1, x2 y2, x y
+        path_data = "M10,10 C20,5 30,5 40,10 S60,20 70,10"
+        bounds = processor.calculate_path_bounds(path_data)
+
+        assert bounds is not None
+        min_x, min_y, max_x, max_y = bounds
+        assert min_x == 10
+        assert min_y == 5
+        assert max_x == 70
+        assert max_y == 20
+
+    def test_calculate_path_bounds_with_quadratic(self, processor: SVGProcessor) -> None:
+        """Test path bounds with quadratic bezier curves."""
+        # Quadratic bezier: Q x1 y1, x y
+        path_data = "M10,10 Q20,5 30,10 T50,10"
+        bounds = processor.calculate_path_bounds(path_data)
+
+        assert bounds is not None
+        min_x, min_y, max_x, max_y = bounds
+        assert min_x == 10
+        assert min_y == 5
+        assert max_x == 50
+        assert max_y == 10
+
+    def test_calculate_path_bounds_mixed_commands(self, processor: SVGProcessor) -> None:
+        """Test path bounds with mixed absolute and relative commands."""
+        # Mix of absolute and relative commands
+        path_data = "M10,10 L20,20 l10,0 H40 h5 V30 v5 Z"
+        bounds = processor.calculate_path_bounds(path_data)
+
+        assert bounds is not None
+        min_x, min_y, max_x, max_y = bounds
+        assert min_x == 10
+        assert min_y == 10
+        assert max_x == 45
+        assert max_y == 35
+
+    def test_calculate_path_bounds_empty_string(self, processor: SVGProcessor) -> None:
+        """Test path bounds with empty string."""
+        bounds = processor.calculate_path_bounds("")
+        assert bounds is None
+
+    def test_calculate_path_bounds_no_coordinates(self, processor: SVGProcessor) -> None:
+        """Test path bounds with command but no coordinates."""
+        bounds = processor.calculate_path_bounds("M Z")
+        assert bounds is None
