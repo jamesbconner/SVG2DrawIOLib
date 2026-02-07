@@ -1598,6 +1598,39 @@ class TestSVGProcessor:
         result = processor._adjust_viewbox_with_svgelements(tree)
         assert result is None
 
+    def test_adjust_viewbox_with_svgelements_write_failure_cleanup(
+        self, processor: SVGProcessor, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Test that temp file is cleaned up even if svg_tree.write() fails."""
+        import glob
+        import os
+
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50">
+    <path d="M10,10 L90,10 L50,40 Z"/>
+</svg>"""
+        svg_file = tmp_path / "test.svg"
+        svg_file.write_text(svg_content)
+        tree = processor.load_svg(svg_file)
+
+        # Count temp files before
+        temp_dir = os.path.dirname(tmp_path)
+        before_count = len(glob.glob(os.path.join(temp_dir, "*.svg")))
+
+        # Mock write to raise an exception
+        def mock_write(*args, **kwargs):
+            raise OSError("Mock write error")
+
+        monkeypatch.setattr(tree, "write", mock_write)
+
+        result = processor._adjust_viewbox_with_svgelements(tree)
+        assert result is None
+
+        # Verify no temp files were leaked
+        after_count = len(glob.glob(os.path.join(temp_dir, "*.svg")))
+        # Should be same count (the test.svg file we created)
+        assert after_count == before_count
+
     def test_adjust_svg_viewbox_to_content_importerror(
         self, processor: SVGProcessor, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:

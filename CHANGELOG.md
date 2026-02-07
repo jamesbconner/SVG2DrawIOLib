@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Library Dimension Rounding**: Changed from truncation (`int()`) to proper rounding (`round()`) to match DrawIO's rendering behavior.
 - **Dimension Consistency**: Fixed inconsistency where library JSON metadata used `round()` but embedded geometry used `int()` (truncation), ensuring both use consistent rounding.
 - **Arc Command Multiple Segments**: Fixed path bounds calculation for arc commands with multiple segments. Previously only captured the last segment's endpoint; now properly iterates through all arc segments (7 parameters each) and correctly handles relative positioning.
+- **Temp File Cleanup**: Fixed potential temp file leak in `_adjust_viewbox_with_svgelements` when SVG write operation fails. Temp file is now properly cleaned up even if an exception occurs during write.
 
 ### Changed
 

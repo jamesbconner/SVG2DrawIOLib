@@ -403,13 +403,15 @@ class SVGProcessor:
             vb_height = float(parts[3])
 
             # Write SVG to temp file for svgelements to parse
-            with tempfile.NamedTemporaryFile(
-                mode="w", suffix=".svg", delete=False, encoding="utf-8"
-            ) as f:
-                svg_tree.write(f, encoding="unicode", xml_declaration=True)
-                temp_path = f.name
-
+            # Initialize temp_path before the with block to ensure cleanup works
+            temp_path = None
             try:
+                with tempfile.NamedTemporaryFile(
+                    mode="w", suffix=".svg", delete=False, encoding="utf-8"
+                ) as f:
+                    temp_path = f.name
+                    svg_tree.write(f, encoding="unicode", xml_declaration=True)
+
                 # Parse with svgelements
                 svg = svgelements.SVG.parse(temp_path)
                 bbox = svg.bbox()
@@ -452,8 +454,9 @@ class SVGProcessor:
                 import contextlib
                 import os
 
-                with contextlib.suppress(Exception):
-                    os.unlink(temp_path)
+                if temp_path:
+                    with contextlib.suppress(Exception):
+                        os.unlink(temp_path)
 
         except Exception as e:
             logger.debug(f"svgelements bbox calculation failed: {e}")
