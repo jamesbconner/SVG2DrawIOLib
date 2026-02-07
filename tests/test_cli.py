@@ -121,9 +121,10 @@ class TestCreateCommand:
 
         tree = ET.parse(output)
         config = json.loads(tree.getroot().text)
-        # Original is 100x50, aspect 2:1, max 64 should give 64x32
+        # After viewBox adjustment, aspect ratio changes from 100x50 to 80x30
+        # (path bounds are 10,10 to 90,40), so max 64 gives 64x24
         assert config[0]["w"] == 64
-        assert config[0]["h"] == 32
+        assert config[0]["h"] == 24
 
     def test_create_with_fixed_dimensions(
         self, runner: CliRunner, sample_svg: Path, tmp_path: Path

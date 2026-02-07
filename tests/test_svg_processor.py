@@ -165,7 +165,9 @@ class TestSVGProcessor:
         assert icon.name == "test_icon"
         assert isinstance(icon.xml_data, bytes)
         assert icon.dimensions.width == 64
-        assert icon.dimensions.height == 32  # Scaled proportionally
+        # After viewBox adjustment, the aspect ratio changes from 100x50 to 80x30
+        # (path bounds are 10,10 to 90,40), so height is 24 instead of 32
+        assert icon.dimensions.height == 24  # Scaled proportionally after viewBox adjustment
 
     def test_process_svg_file_with_css(self, sample_svg_file: Path) -> None:
         """Test processing with CSS enabled."""
@@ -284,3 +286,299 @@ class TestSVGProcessor:
         assert geometry is not None
         assert geometry.get("width") == "100"
         assert geometry.get("height") == "75"
+
+    def test_adjust_svg_viewbox_to_content(self, processor: SVGProcessor, tmp_path: Path) -> None:
+        """Test that SVG viewBox is adjusted to remove padding."""
+        # Create SVG with square viewBox (common for icon fonts)
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
+    <path d="M64,64 L576,64 L576,576 L64,576 Z" fill="#000000"/>
+</svg>"""
+        svg_file = tmp_path / "test.svg"
+        svg_file.write_text(svg_content)
+
+        tree = processor.load_svg(svg_file)
+        adjusted = processor.adjust_svg_viewbox_to_content(tree)
+
+        root = adjusted.getroot()
+        viewbox = root.get("viewBox")
+
+        # ViewBox should be adjusted to remove 10% padding on each side
+        # Original: 0 0 640 640
+        # Adjusted: 64 64 512 512 (10% padding = 64px on each side)
+        assert viewbox == "64.0 64.0 512.0 512.0"
+
+    def test_adjust_svg_viewbox_non_square(
+        self, processor: SVGProcessor, sample_svg_file: Path
+    ) -> None:
+        """Test that viewBox is adjusted based on actual content bounds."""
+        tree = processor.load_svg(sample_svg_file)
+
+        adjusted = processor.adjust_svg_viewbox_to_content(tree)
+        new_viewbox = adjusted.getroot().get("viewBox")
+
+        # The path in sample_svg_content goes from (10,10) to (90,40)
+        # So viewBox should be adjusted to "10.0 10.0 80.0 30.0"
+        assert new_viewbox == "10.0 10.0 80.0 30.0"
+
+    def test_process_svg_file_normalizes_viewbox(
+        self, processor: SVGProcessor, tmp_path: Path
+    ) -> None:
+        """Test that process_svg_file adjusts viewBox based on actual content bounds."""
+        # Create SVG with offset viewBox
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="15 25 80 60">
+    <circle cx="50" cy="50" r="30" fill="#000000"/>
+</svg>"""
+        svg_file = tmp_path / "offset_icon.svg"
+        svg_file.write_text(svg_content)
+
+        icon = processor.process_svg_file(svg_file)
+
+        # Decompress and check the embedded SVG has adjusted viewBox
+        import base64
+        import xml.etree.ElementTree as ET
+        import zlib
+
+        decoded = base64.b64decode(icon.xml_data)
+        try:
+            decompressed = zlib.decompress(decoded, -zlib.MAX_WBITS)
+        except zlib.error:
+            compressed = b"\x78\x9c" + decoded + b"\x00\x00\x00\x00"
+            decompressed = zlib.decompress(compressed)
+
+        # Parse the mxGraphModel
+        root = ET.fromstring(decompressed)
+
+        # Extract the data URI from the style
+        cell = root.find(".//mxCell[@id='2']")
+        assert cell is not None
+        style = cell.get("style")
+        assert style is not None
+
+        # Extract image data URI
+        image_start = style.find("image=data:image/svg+xml,")
+        assert image_start != -1
+
+        # Extract and decode the SVG
+        image_data = style[image_start + len("image=") :]
+        # Find the end of the data URI (next semicolon or end of style)
+        next_semicolon = image_data.find(";")
+        if next_semicolon != -1:
+            image_data = image_data[:next_semicolon]
+
+        # Decode the base64 SVG
+        svg_b64 = image_data.replace("data:image/svg+xml,", "")
+        svg_bytes = base64.b64decode(svg_b64)
+        svg_root = ET.fromstring(svg_bytes)
+
+        # Check that viewBox is adjusted to actual circle bounds (20,20,60,60)
+        # Circle at cx=50, cy=50, r=30 means bounds are (20,20) to (80,80)
+        viewbox = svg_root.get("viewBox")
+        assert viewbox is not None
+        parts = viewbox.split()
+        assert parts[0] == "20.0"  # min_x = cx - r = 50 - 30
+        assert parts[1] == "20.0"  # min_y = cy - r = 50 - 30
+        assert parts[2] == "60.0"  # width = 2*r = 60
+        assert parts[3] == "60.0"  # height = 2*r = 60
+
+    def test_calculate_path_bounds_simple_path(self, processor: SVGProcessor) -> None:
+        """Test calculating bounds from a simple path."""
+        path_data = "M10,20 L30,40 L50,10"
+        bounds = processor.calculate_path_bounds(path_data)
+
+        assert bounds is not None
+        min_x, min_y, max_x, max_y = bounds
+        assert min_x == 10
+        assert min_y == 10
+        assert max_x == 50
+        assert max_y == 40
+
+    def test_calculate_path_bounds_complex_path(self, processor: SVGProcessor) -> None:
+        """Test calculating bounds from a complex path with decimals."""
+        path_data = "M64.5,128.3 L576.2,64.8 L320.1,576.9 Z"
+        bounds = processor.calculate_path_bounds(path_data)
+
+        assert bounds is not None
+        min_x, min_y, max_x, max_y = bounds
+        assert min_x == 64.5
+        assert min_y == 64.8
+        assert max_x == 576.2
+        assert max_y == 576.9
+
+    def test_calculate_path_bounds_empty_path(self, processor: SVGProcessor) -> None:
+        """Test calculating bounds from an empty path."""
+        bounds = processor.calculate_path_bounds("")
+        assert bounds is None
+
+    def test_calculate_path_bounds_single_point(self, processor: SVGProcessor) -> None:
+        """Test calculating bounds from a path with single coordinate."""
+        bounds = processor.calculate_path_bounds("M10")
+        assert bounds is None
+
+    def test_adjust_svg_viewbox_no_viewbox(self, processor: SVGProcessor, tmp_path: Path) -> None:
+        """Test adjust_svg_viewbox_to_content when SVG has no viewBox."""
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100">
+    <path d="M10,10 L90,90"/>
+</svg>"""
+        svg_file = tmp_path / "no_viewbox.svg"
+        svg_file.write_text(svg_content)
+
+        tree = processor.load_svg(svg_file)
+        adjusted = processor.adjust_svg_viewbox_to_content(tree)
+
+        # Should return unchanged when no viewBox
+        assert adjusted.getroot().get("viewBox") is None
+
+    def test_adjust_svg_viewbox_invalid_viewbox(
+        self, processor: SVGProcessor, tmp_path: Path
+    ) -> None:
+        """Test adjust_svg_viewbox_to_content with invalid viewBox format."""
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="invalid">
+    <path d="M10,10 L90,90"/>
+</svg>"""
+        svg_file = tmp_path / "invalid_viewbox.svg"
+        svg_file.write_text(svg_content)
+
+        tree = processor.load_svg(svg_file)
+        adjusted = processor.adjust_svg_viewbox_to_content(tree)
+
+        # Should return unchanged when viewBox is invalid
+        assert adjusted.getroot().get("viewBox") == "invalid"
+
+    def test_adjust_svg_viewbox_no_content(self, processor: SVGProcessor, tmp_path: Path) -> None:
+        """Test adjust_svg_viewbox_to_content when SVG has no drawable content."""
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+</svg>"""
+        svg_file = tmp_path / "no_content.svg"
+        svg_file.write_text(svg_content)
+
+        tree = processor.load_svg(svg_file)
+        adjusted = processor.adjust_svg_viewbox_to_content(tree)
+
+        # Should return unchanged when no content found
+        assert adjusted.getroot().get("viewBox") == "0 0 100 100"
+
+    def test_adjust_svg_viewbox_minimal_padding(
+        self, processor: SVGProcessor, tmp_path: Path
+    ) -> None:
+        """Test that viewBox is not adjusted when padding is below threshold."""
+        # Create SVG with minimal padding (less than 5%)
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+    <rect x="2" y="2" width="96" height="96" fill="#000000"/>
+</svg>"""
+        svg_file = tmp_path / "minimal_padding.svg"
+        svg_file.write_text(svg_content)
+
+        tree = processor.load_svg(svg_file)
+        adjusted = processor.adjust_svg_viewbox_to_content(tree)
+
+        # Should remain unchanged since padding is only 2% (below 5% threshold)
+        assert adjusted.getroot().get("viewBox") == "0 0 100 100"
+
+    def test_adjust_svg_viewbox_with_rect(self, processor: SVGProcessor, tmp_path: Path) -> None:
+        """Test viewBox adjustment with rect elements."""
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+    <rect x="50" y="50" width="100" height="100" fill="#000000"/>
+</svg>"""
+        svg_file = tmp_path / "rect.svg"
+        svg_file.write_text(svg_content)
+
+        tree = processor.load_svg(svg_file)
+        adjusted = processor.adjust_svg_viewbox_to_content(tree)
+
+        # Should adjust to rect bounds
+        assert adjusted.getroot().get("viewBox") == "50.0 50.0 100.0 100.0"
+
+    def test_adjust_svg_viewbox_mixed_elements(
+        self, processor: SVGProcessor, tmp_path: Path
+    ) -> None:
+        """Test viewBox adjustment with mixed element types."""
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300">
+    <circle cx="100" cy="100" r="40" fill="#000000"/>
+    <rect x="150" y="150" width="80" height="80" fill="#000000"/>
+    <path d="M200,50 L250,100" stroke="#000000"/>
+</svg>"""
+        svg_file = tmp_path / "mixed.svg"
+        svg_file.write_text(svg_content)
+
+        tree = processor.load_svg(svg_file)
+        adjusted = processor.adjust_svg_viewbox_to_content(tree)
+
+        # Should calculate bounds from all elements
+        # Circle: (60,60) to (140,140)
+        # Rect: (150,150) to (230,230)
+        # Path: (200,50) to (250,100)
+        # Overall: (60,50) to (250,230) = bounds (60,50,190,180)
+        viewbox = adjusted.getroot().get("viewBox")
+        assert viewbox is not None
+        parts = [float(p) for p in viewbox.split()]
+        assert parts[0] == 60.0  # min_x
+        assert parts[1] == 50.0  # min_y
+        assert parts[2] == 190.0  # width
+        assert parts[3] == 180.0  # height
+
+    def test_calculate_svg_bounds_no_root(self, processor: SVGProcessor) -> None:
+        """Test calculate_svg_bounds with tree that has no root."""
+        tree = ET.ElementTree()
+        result = processor.calculate_svg_bounds(tree)
+        assert result is None
+
+    def test_calculate_svg_bounds_no_viewbox(self, processor: SVGProcessor, tmp_path: Path) -> None:
+        """Test calculate_svg_bounds when SVG has no viewBox."""
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100">
+    <circle cx="50" cy="50" r="30"/>
+</svg>"""
+        svg_file = tmp_path / "no_vb.svg"
+        svg_file.write_text(svg_content)
+
+        tree = processor.load_svg(svg_file)
+        result = processor.calculate_svg_bounds(tree)
+        assert result is None
+
+    def test_calculate_svg_bounds_with_circles(
+        self, processor: SVGProcessor, tmp_path: Path
+    ) -> None:
+        """Test calculate_svg_bounds with circle elements."""
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+    <circle cx="100" cy="100" r="50"/>
+</svg>"""
+        svg_file = tmp_path / "circle.svg"
+        svg_file.write_text(svg_content)
+
+        tree = processor.load_svg(svg_file)
+        result = processor.calculate_svg_bounds(tree)
+
+        assert result is not None
+        min_x, min_y, width, height = result
+        assert min_x == 50.0
+        assert min_y == 50.0
+        assert width == 100.0
+        assert height == 100.0
+
+    def test_calculate_svg_bounds_with_rects(self, processor: SVGProcessor, tmp_path: Path) -> None:
+        """Test calculate_svg_bounds with rect elements."""
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+    <rect x="25" y="25" width="150" height="150"/>
+</svg>"""
+        svg_file = tmp_path / "rect.svg"
+        svg_file.write_text(svg_content)
+
+        tree = processor.load_svg(svg_file)
+        result = processor.calculate_svg_bounds(tree)
+
+        assert result is not None
+        min_x, min_y, width, height = result
+        assert min_x == 25.0
+        assert min_y == 25.0
+        assert width == 150.0
+        assert height == 150.0

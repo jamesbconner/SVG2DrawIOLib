@@ -133,6 +133,230 @@ class SVGProcessor:
         logger.warning("Could not determine SVG dimensions")
         return None
 
+    def calculate_svg_bounds(
+        self, svg_tree: ET.ElementTree
+    ) -> tuple[float, float, float, float] | None:
+        """Calculate the actual bounding box of SVG content.
+
+        This finds the min/max x/y coordinates of all path, rect, circle, etc.
+        elements to determine the actual content bounds, ignoring whitespace.
+
+        Args:
+            svg_tree: The SVG ElementTree.
+
+        Returns:
+            Tuple of (min_x, min_y, width, height) or None if bounds cannot be determined.
+        """
+        root = svg_tree.getroot()
+        if root is None:
+            return None
+
+        # For now, we'll use a simpler approach: check if there's significant
+        # padding in the viewBox by looking at common SVG elements
+        # A full implementation would parse path data, which is complex
+
+        # Try to get viewBox
+        viewbox = root.get("viewBox")
+        if not viewbox:
+            return None
+
+        try:
+            parts = viewbox.split()
+            if len(parts) == 4:
+                vb_x = float(parts[0])
+                vb_y = float(parts[1])
+                vb_width = float(parts[2])
+                vb_height = float(parts[3])
+
+                # Check for common patterns where content doesn't fill viewBox
+                # Look for path, rect, circle elements and their bounds
+                min_x, min_y = float("inf"), float("inf")
+                max_x, max_y = float("-inf"), float("-inf")
+                found_elements = False
+
+                # Check circles
+                for circle in root.iter("{http://www.w3.org/2000/svg}circle"):
+                    found_elements = True
+                    cx = float(circle.get("cx", 0))
+                    cy = float(circle.get("cy", 0))
+                    r = float(circle.get("r", 0))
+                    min_x = min(min_x, cx - r)
+                    min_y = min(min_y, cy - r)
+                    max_x = max(max_x, cx + r)
+                    max_y = max(max_y, cy + r)
+
+                # Check rects
+                for rect in root.iter("{http://www.w3.org/2000/svg}rect"):
+                    found_elements = True
+                    x = float(rect.get("x", 0))
+                    y = float(rect.get("y", 0))
+                    width = float(rect.get("width", 0))
+                    height = float(rect.get("height", 0))
+                    min_x = min(min_x, x)
+                    min_y = min(min_y, y)
+                    max_x = max(max_x, x + width)
+                    max_y = max(max_y, y + height)
+
+                # For paths, we'd need to parse the 'd' attribute which is complex
+                # Instead, use a heuristic: if viewBox starts at 0,0 but we suspect
+                # padding, return adjusted bounds
+
+                if found_elements and min_x != float("inf"):
+                    # We found some elements, return their bounds
+                    return (min_x, min_y, max_x - min_x, max_y - min_y)
+
+                # If no simple elements found, assume viewBox is correct
+                return (vb_x, vb_y, vb_width, vb_height)
+
+        except (ValueError, IndexError):
+            pass
+
+        return None
+
+    def calculate_path_bounds(self, path_data: str) -> tuple[float, float, float, float] | None:
+        """Calculate the bounding box of an SVG path.
+
+        This extracts coordinate pairs from path data and calculates min/max bounds.
+        Works for simple paths with M (moveto) and L (lineto) commands.
+
+        Args:
+            path_data: The 'd' attribute of an SVG path element.
+
+        Returns:
+            Tuple of (min_x, min_y, max_x, max_y) or None if bounds cannot be determined.
+        """
+        import re
+
+        # Extract all numbers from the path data
+        numbers = re.findall(r"[-+]?\d*\.?\d+", path_data)
+        if len(numbers) < 2:
+            return None
+
+        # Convert to floats
+        coords = [float(n) for n in numbers]
+
+        # Treat as alternating x,y coordinates
+        x_coords = coords[0::2]  # Even indices
+        y_coords = coords[1::2]  # Odd indices
+
+        if not x_coords or not y_coords:
+            return None
+
+        min_x = min(x_coords)
+        max_x = max(x_coords)
+        min_y = min(y_coords)
+        max_y = max(y_coords)
+
+        return (min_x, min_y, max_x, max_y)
+
+    def adjust_svg_viewbox_to_content(self, svg_tree: ET.ElementTree) -> ET.ElementTree:
+        """Adjust SVG viewBox to match actual content bounds, removing padding.
+
+        This calculates the actual bounding box of SVG content and adjusts
+        the viewBox to match, eliminating any padding.
+
+        Args:
+            svg_tree: The SVG ElementTree to adjust.
+
+        Returns:
+            Modified SVG ElementTree with adjusted viewBox.
+        """
+        root = svg_tree.getroot()
+        if root is None:
+            return svg_tree
+
+        viewbox = root.get("viewBox")
+        if not viewbox:
+            return svg_tree
+
+        try:
+            parts = viewbox.split()
+            if len(parts) != 4:
+                return svg_tree
+
+            vb_x = float(parts[0])
+            vb_y = float(parts[1])
+            vb_width = float(parts[2])
+            vb_height = float(parts[3])
+
+            # Calculate actual content bounds from all path elements
+            content_min_x = float("inf")
+            content_min_y = float("inf")
+            content_max_x = float("-inf")
+            content_max_y = float("-inf")
+            found_content = False
+
+            # Check path elements
+            for path in root.iter("{http://www.w3.org/2000/svg}path"):
+                d_attr = path.get("d", "")
+                if d_attr:
+                    bounds = self.calculate_path_bounds(d_attr)
+                    if bounds:
+                        min_x, min_y, max_x, max_y = bounds
+                        content_min_x = min(content_min_x, min_x)
+                        content_min_y = min(content_min_y, min_y)
+                        content_max_x = max(content_max_x, max_x)
+                        content_max_y = max(content_max_y, max_y)
+                        found_content = True
+
+            # Check circle elements
+            for circle in root.iter("{http://www.w3.org/2000/svg}circle"):
+                cx = float(circle.get("cx", 0))
+                cy = float(circle.get("cy", 0))
+                r = float(circle.get("r", 0))
+                content_min_x = min(content_min_x, cx - r)
+                content_min_y = min(content_min_y, cy - r)
+                content_max_x = max(content_max_x, cx + r)
+                content_max_y = max(content_max_y, cy + r)
+                found_content = True
+
+            # Check rect elements
+            for rect in root.iter("{http://www.w3.org/2000/svg}rect"):
+                x = float(rect.get("x", 0))
+                y = float(rect.get("y", 0))
+                width = float(rect.get("width", 0))
+                height = float(rect.get("height", 0))
+                content_min_x = min(content_min_x, x)
+                content_min_y = min(content_min_y, y)
+                content_max_x = max(content_max_x, x + width)
+                content_max_y = max(content_max_y, y + height)
+                found_content = True
+
+            if not found_content or content_min_x == float("inf"):
+                # No content found or couldn't calculate bounds
+                return svg_tree
+
+            # Calculate content dimensions
+            content_width = content_max_x - content_min_x
+            content_height = content_max_y - content_min_y
+
+            # Only adjust if there's significant padding (more than 5% on any side)
+            padding_threshold = min(vb_width, vb_height) * 0.05
+
+            has_padding = (
+                content_min_x > padding_threshold
+                or content_min_y > padding_threshold
+                or (vb_width - content_max_x) > padding_threshold
+                or (vb_height - content_max_y) > padding_threshold
+            )
+
+            if has_padding:
+                # Adjust viewBox to match content bounds
+                root.set(
+                    "viewBox", f"{content_min_x} {content_min_y} {content_width} {content_height}"
+                )
+                logger.debug(
+                    f"Adjusted viewBox from '{vb_x} {vb_y} {vb_width} {vb_height}' "
+                    f"to '{content_min_x} {content_min_y} {content_width} {content_height}' "
+                    f"based on actual content bounds"
+                )
+
+            return svg_tree
+
+        except (ValueError, IndexError, AttributeError) as e:
+            logger.warning(f"Could not adjust viewBox: {e}")
+            return svg_tree
+
     def calculate_dimensions(
         self, svg_tree: ET.ElementTree, max_dimension: float | None = None
     ) -> SVGDimensions:
@@ -214,6 +438,9 @@ class SVGProcessor:
         # Load SVG
         svg_tree = self.load_svg(filepath)
 
+        # Adjust viewBox to remove padding and match actual content bounds
+        svg_tree = self.adjust_svg_viewbox_to_content(svg_tree)
+
         # Add CSS if requested
         if self.options.add_css:
             svg_tree = self.add_css_classes(svg_tree)
@@ -229,7 +456,7 @@ class SVGProcessor:
         data_uri = self.svg_to_data_uri(svg_tree)
 
         # Generate mxGraphModel
-        mxgraph_xml = self._create_mxgraph_model(data_uri, dimensions)
+        mxgraph_xml = self._create_mxgraph_model(data_uri, dimensions, self.options.add_css)
 
         # Compress and encode
         compressed_data = self._compress_and_encode(ET.tostring(mxgraph_xml))
@@ -239,12 +466,15 @@ class SVGProcessor:
 
         return DrawIOIcon(name=icon_name, xml_data=compressed_data, dimensions=dimensions)
 
-    def _create_mxgraph_model(self, data_uri: str, dimensions: SVGDimensions) -> ET.Element:
+    def _create_mxgraph_model(
+        self, data_uri: str, dimensions: SVGDimensions, add_css: bool = False
+    ) -> ET.Element:
         """Create the mxGraphModel XML structure.
 
         Args:
             data_uri: Data URI of the SVG image.
             dimensions: Icon dimensions.
+            add_css: Whether CSS editing was enabled for this icon.
 
         Returns:
             Root mxGraphModel XML element.
@@ -271,6 +501,8 @@ class SVGProcessor:
         cell2.set("value", "")
 
         # Create style string
+        # imageAspect=0 tells DrawIO not to preserve internal SVG spacing
+        # aspect=fixed ensures the shape maintains its proportions when resized
         style_dict = {
             "shape": "image",
             "verticalLabelPosition": "bottom",
@@ -279,8 +511,12 @@ class SVGProcessor:
             "aspect": "fixed",
             "imageAspect": "0",
             "image": data_uri,
-            "editableCssRules": ".*",
         }
+
+        # Add CSS editing support if enabled
+        if add_css:
+            style_dict["editableCssRules"] = ".*"
+
         style_str = ";".join(f"{k}={v}" for k, v in style_dict.items())
         cell2.set("style", style_str)
 
