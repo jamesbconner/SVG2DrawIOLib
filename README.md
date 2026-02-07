@@ -13,26 +13,17 @@
 
 Convert SVG files into DrawIO/diagrams.net shape libraries with support for colorable icons.
 
-## What It Does
-
-SVG2DrawIOLib is a command-line tool and Python library that converts SVG icons into DrawIO (diagrams.net) custom shape libraries. It handles the complex encoding, compression, and XML wrapping required by DrawIO's library format, making it easy to create professional icon libraries for your diagrams.
-
-**Key Capabilities:**
-- **Batch Conversion**: Process individual files, entire directories, or recursive folder structures
-- **Pixel-Perfect Rendering**: Uses browser-accurate bounding box calculation (via `svgelements`) to eliminate padding and ensure icons render exactly as designed
-- **Color Customization**: Inject CSS classes to enable color editing of svgs directly in DrawIO's interface
-- **Flexible Sizing**: Proportional scaling with aspect ratio preservation, or fixed dimensions
-- **Library Management**: Create new libraries, add icons to existing ones, remove icons, and list contents
-
----
-
 ## Features
 
-- ✨ **Easy Conversion**: Transform SVG files into DrawIO libraries with a single command
-- 🎨 **Color Editing**: Optional CSS injection for color customization in DrawIO
-- 📏 **Customizable**: Configure icon dimensions, namespaces, and more
+- ✨ **Batch Conversion**: Process individual files, entire directories, or recursive folder structures
+- 🎯 **Pixel-Perfect Rendering**: Browser-accurate bounding box calculation (via `svgelements`) eliminates padding and ensures icons render exactly as designed
+- 🎨 **Color Customization**: Inject CSS classes to enable color editing directly in DrawIO's interface
+- 📏 **Flexible Sizing**: Proportional scaling with aspect ratio preservation, or fixed dimensions
+- 📚 **Library Management**: Create new libraries, add/remove icons, and list contents
 - 🚀 **Modern CLI**: Beautiful, colorful output with rich-click
-- 🔒 **Type Safe**: Full type annotations with mypy
+- 🔧 **Modern Python Stack**: Built with ruff, mypy, bandit, pytest, and pre-commit hooks
+
+---
 
 ## Quick Start
 
