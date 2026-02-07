@@ -14,11 +14,11 @@ Convert SVG files into DrawIO/diagrams.net shape libraries with support for colo
 
 ## Features
 
-✨ **Easy Conversion**: Transform SVG files into DrawIO libraries with a single command
-🎨 **Color Editing**: Optional CSS injection for color customization in DrawIO
-📏 **Customizable**: Configure icon dimensions, namespaces, and more
-🚀 **Modern CLI**: Beautiful, colorful output with rich-click
-🔒 **Type Safe**: Full type annotations with mypy
+- ✨ **Easy Conversion**: Transform SVG files into DrawIO libraries with a single command
+- 🎨 **Color Editing**: Optional CSS injection for color customization in DrawIO
+- 📏 **Customizable**: Configure icon dimensions, namespaces, and more
+- 🚀 **Modern CLI**: Beautiful, colorful output with rich-click
+- 🔒 **Type Safe**: Full type annotations with mypy
 
 ## Quick Start
 

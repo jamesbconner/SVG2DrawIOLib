@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2026-02-07
+
+### Fixed
+
+- **ViewBox Padding Detection**: Fixed padding calculation to correctly account for non-zero viewBox origins (vb_x, vb_y). Previously falsely detected padding when content filled viewBox completely with non-zero origin coordinates.
+- **SVG Path Parsing**: Completely rewrote path bounds calculation to properly handle H (horizontal), V (vertical), C/S (cubic bezier), Q/T (quadratic bezier), and A (arc) commands. Now supports both absolute and relative command variants.
+- **ViewBox Clamping**: Added clamping logic to prevent viewBox from expanding beyond original bounds. Ensures the method only shrinks viewBox to remove padding, never expands it to reveal clipped content.
+- **Relative Bezier Curves**: Fixed bezier curve handling to properly process multiple segments in a single command. Now correctly updates current position after each segment, preventing incorrect offset calculations for subsequent curves.
+- **Negative Dimensions**: Added validation to ensure content dimensions are positive after clamping. Prevents invalid viewBox with negative width/height when content is entirely outside viewBox bounds.
+- **Dead Code Removal**: Removed unused `calculate_svg_bounds()` method and redundant dimension calculations to improve code clarity.
+
+### Changed
+
+- **SVG Content Bounds**: ViewBox adjustment now calculates actual content bounds from all SVG elements (paths, circles, rects) and only adjusts when padding exceeds 5% threshold on any side.
+- **Test Coverage**: Increased test coverage from 88% to 95% with comprehensive tests for edge cases and bug scenarios (127 tests total).
+
 ## [1.0.0] - 2026-02-06
 
 ### Initial Release
@@ -47,4 +63,5 @@ The project follows SOLID principles with clear module boundaries:
 - `library_manager.py`: Library file management
 - `cli/`: Modular CLI with dynamic command loading
 
+[1.0.1]: https://github.com/jamesbconner/SVG2DrawIOLib/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/jamesbconner/SVG2DrawIOLib/releases/tag/v1.0.0

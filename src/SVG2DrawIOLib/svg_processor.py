@@ -224,19 +224,39 @@ class SVGProcessor:
                     current_y = y
 
             elif current_command in "CcSsQqTt":  # Bezier curves
-                # For curves, just use all coordinate pairs as potential bounds
-                # This is approximate but safe (may overestimate bounds)
-                for j in range(0, len(coords), 2):
-                    if j + 1 < len(coords):
-                        x, y = coords[j], coords[j + 1]
+                # Determine points per segment based on command
+                if current_command in "Cc":  # Cubic bezier: 6 params (x1,y1,x2,y2,x,y)
+                    points_per_segment = 6
+                elif (
+                    current_command in "Ss" or current_command in "Qq"
+                ):  # Smooth cubic: 4 params (x2,y2,x,y)
+                    points_per_segment = 4
+                else:  # Tt - Smooth quadratic: 2 params (x,y)
+                    points_per_segment = 2
+
+                # Process each segment
+                for segment_start in range(0, len(coords), points_per_segment):
+                    segment_coords = coords[segment_start : segment_start + points_per_segment]
+                    if len(segment_coords) < points_per_segment:
+                        break  # Incomplete segment
+
+                    # Add all control points and endpoint to bounds
+                    for j in range(0, len(segment_coords), 2):
+                        if j + 1 < len(segment_coords):
+                            x, y = segment_coords[j], segment_coords[j + 1]
+                            if current_command.islower():  # Relative
+                                x += current_x
+                                y += current_y
+                            x_coords.append(x)
+                            y_coords.append(y)
+
+                    # Update current position to endpoint of this segment
+                    if len(segment_coords) >= 2:
+                        x, y = segment_coords[-2], segment_coords[-1]
                         if current_command.islower():  # Relative
                             x += current_x
                             y += current_y
-                        x_coords.append(x)
-                        y_coords.append(y)
-                        # Update current position to last point
-                        if j == len(coords) - 2:
-                            current_x, current_y = x, y
+                        current_x, current_y = x, y
 
             elif current_command in "Aa" and len(coords) >= 2:  # Arc - skip for now
                 # Arc has 7 parameters: rx ry x-axis-rotation large-arc-flag sweep-flag x y
@@ -336,10 +356,6 @@ class SVGProcessor:
                 # No content found or couldn't calculate bounds
                 return svg_tree
 
-            # Calculate content dimensions
-            content_width = content_max_x - content_min_x
-            content_height = content_max_y - content_min_y
-
             # Clamp content bounds to original viewBox to prevent expansion
             # Only shrink the viewBox, never expand it
             vb_max_x = vb_x + vb_width
@@ -350,9 +366,15 @@ class SVGProcessor:
             content_max_x = min(content_max_x, vb_max_x)
             content_max_y = min(content_max_y, vb_max_y)
 
-            # Recalculate dimensions after clamping
+            # Calculate dimensions after clamping
             content_width = content_max_x - content_min_x
             content_height = content_max_y - content_min_y
+
+            # Validate that dimensions are positive (content is within viewBox)
+            if content_width <= 0 or content_height <= 0:
+                # Content is entirely outside viewBox, don't adjust
+                logger.debug("Content is entirely outside viewBox bounds, skipping adjustment")
+                return svg_tree
 
             # Only adjust if there's significant padding (more than 5% on any side)
             # Account for viewBox origin when calculating padding

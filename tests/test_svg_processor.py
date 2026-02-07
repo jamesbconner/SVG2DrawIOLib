@@ -697,3 +697,64 @@ class TestSVGProcessor:
         """Test path bounds with command but no coordinates."""
         bounds = processor.calculate_path_bounds("M Z")
         assert bounds is None
+
+    def test_calculate_path_bounds_relative_bezier_multiple_segments(
+        self, processor: SVGProcessor
+    ) -> None:
+        """Test relative bezier with multiple implicit segments (Bug #4)."""
+        # Relative cubic bezier with two segments: c dx1,dy1 dx2,dy2 dx,dy dx1',dy1' dx2',dy2' dx',dy'
+        # Start at (10,10), first curve to (20,20), second curve to (30,30)
+        path_data = "M10,10 c5,0 10,0 10,10 5,0 10,0 10,10"
+        bounds = processor.calculate_path_bounds(path_data)
+
+        assert bounds is not None
+        min_x, min_y, max_x, max_y = bounds
+        # Should include all control points and endpoints
+        assert min_x == 10
+        assert min_y == 10
+        # Second curve endpoint should be at (30,30), not incorrectly offset
+        assert max_x == 30
+        assert max_y == 30
+
+    def test_adjust_svg_viewbox_content_outside_viewbox(
+        self, processor: SVGProcessor, tmp_path: Path
+    ) -> None:
+        """Test that viewBox is not adjusted when content is entirely outside (Bug #6)."""
+        # Content is entirely outside the viewBox
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+    <rect x="200" y="200" width="50" height="50" fill="#000000"/>
+</svg>"""
+        svg_file = tmp_path / "content_outside.svg"
+        svg_file.write_text(svg_content)
+
+        tree = processor.load_svg(svg_file)
+        adjusted = processor.adjust_svg_viewbox_to_content(tree)
+
+        # Should remain unchanged since content is outside viewBox
+        assert adjusted.getroot().get("viewBox") == "0 0 100 100"
+
+    def test_adjust_svg_viewbox_content_partially_outside(
+        self, processor: SVGProcessor, tmp_path: Path
+    ) -> None:
+        """Test viewBox adjustment when content is partially outside (Bug #6)."""
+        # Content partially overlaps viewBox
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+    <rect x="-50" y="10" width="100" height="80" fill="#000000"/>
+</svg>"""
+        svg_file = tmp_path / "content_partial.svg"
+        svg_file.write_text(svg_content)
+
+        tree = processor.load_svg(svg_file)
+        adjusted = processor.adjust_svg_viewbox_to_content(tree)
+
+        # Should clamp to viewBox and adjust
+        viewbox = adjusted.getroot().get("viewBox")
+        assert viewbox is not None
+        parts = [float(p) for p in viewbox.split()]
+        # Content clamped to (0,10) to (50,90)
+        assert parts[0] == 0  # min_x clamped to vb_x
+        assert parts[1] == 10  # min_y
+        assert parts[2] == 50  # width
+        assert parts[3] == 80  # height
