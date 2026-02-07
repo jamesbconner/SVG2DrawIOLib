@@ -329,12 +329,12 @@ class TestSVGProcessor:
 
         # Both should use round(), not int() (truncation)
         # This ensures consistency between library JSON and embedded geometry
-        assert (
-            json_width == geometry_width
-        ), f"Width mismatch: JSON={json_width}, geometry={geometry_width}"
-        assert (
-            json_height == geometry_height
-        ), f"Height mismatch: JSON={json_height}, geometry={geometry_height}"
+        assert json_width == geometry_width, (
+            f"Width mismatch: JSON={json_width}, geometry={geometry_width}"
+        )
+        assert json_height == geometry_height, (
+            f"Height mismatch: JSON={json_height}, geometry={geometry_height}"
+        )
 
         # Verify the expected dimensions (100x97.5 scaled to max 40 = 40x39)
         assert json_width == 40
