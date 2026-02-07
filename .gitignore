@@ -36,5 +36,5 @@ resources/
 debug/
 
 # Temporary test files
-test_*.xml
-test_*.py
+/test_*.xml
+/test_*.py
