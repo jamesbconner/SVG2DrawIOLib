@@ -46,12 +46,17 @@ def list(
     logger = logging.getLogger(__name__)
 
     try:
+        logger.debug(f"Listing icons in library: {library_file}")
+
         manager = LibraryManager()
         icon_names = manager.list_icons(library_file)
 
         if not icon_names:
+            logger.info("Library is empty")
             console.print(f"[yellow]Library is empty:[/yellow] {library_file}")
             return
+
+        logger.info(f"Found {len(icon_names)} icon(s) in library")
 
         # Create a nice table
         table = Table(title=f"Icons in {library_file.name}", show_header=True)

@@ -2,23 +2,28 @@
 
 [![PyPI - Version](https://img.shields.io/pypi/v/SVG2DrawIOLib.svg)](https://pypi.org/project/SVG2DrawIOLib)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/SVG2DrawIOLib.svg)](https://pypi.org/project/SVG2DrawIOLib)
+[![PyPI - Downloads](https://img.shields.io/pypi/dm/SVG2DrawIOLib)](https://pypi.org/project/SVG2DrawIOLib)
 [![CI](https://github.com/jamesbconner/SVG2DrawIOLib/workflows/CI/badge.svg)](https://github.com/jamesbconner/SVG2DrawIOLib/actions)
 [![Publish to PyPI](https://github.com/jamesbconner/SVG2DrawIOLib/actions/workflows/publish.yml/badge.svg)](https://github.com/jamesbconner/SVG2DrawIOLib/actions/workflows/publish.yml)
 [![codecov](https://codecov.io/gh/jamesbconner/SVG2DrawIOLib/branch/main/graph/badge.svg)](https://codecov.io/gh/jamesbconner/SVG2DrawIOLib)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
+[![Type checked: mypy](https://img.shields.io/badge/type%20checked-mypy-blue.svg)](https://mypy-lang.org/)
+[![Security: bandit](https://img.shields.io/badge/security-bandit-yellow.svg)](https://github.com/PyCQA/bandit)
 
 Convert SVG files into DrawIO/diagrams.net shape libraries with support for colorable icons.
 
----
-
 ## Features
 
-✨ **Easy Conversion**: Transform SVG files into DrawIO libraries with a single command
-🎨 **Color Editing**: Optional CSS injection for color customization in DrawIO
-📏 **Customizable**: Configure icon dimensions, namespaces, and more
-🚀 **Modern CLI**: Beautiful, colorful output with rich-click
-🔒 **Type Safe**: Full type annotations with mypy
+- ✨ **Batch Conversion**: Process individual files, entire directories, or recursive folder structures
+- 🎯 **Pixel-Perfect Rendering**: Browser-accurate bounding box calculation (via `svgelements`) eliminates padding and ensures icons render exactly as designed
+- 🎨 **Color Customization**: Inject CSS classes to enable color editing directly in DrawIO's interface
+- 📏 **Flexible Sizing**: Proportional scaling with aspect ratio preservation, or fixed dimensions
+- 📚 **Library Management**: Create new libraries, add/remove icons, and list contents
+- 🚀 **Modern CLI**: Beautiful, colorful output with rich-click
+- 🔧 **Modern Python Stack**: Built with ruff, mypy, bandit, pytest, and pre-commit hooks
+
+---
 
 ## Quick Start
 

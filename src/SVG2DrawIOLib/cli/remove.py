@@ -50,15 +50,20 @@ def remove(
     logger = logging.getLogger(__name__)
 
     try:
+        logger.debug(f"Removing icons from library: {library_file}")
+        logger.debug(f"Icons to remove: {', '.join(icon_names)}")
+
         manager = LibraryManager()
         metadata, removed_count = manager.remove_icons_from_library(library_file, list(icon_names))
 
         if removed_count == 0:
+            logger.warning("No icons were removed")
             console.print(
                 "[yellow]Warning:[/yellow] No icons were removed. "
                 "Requested icons not found in library."
             )
         else:
+            logger.info(f"Successfully removed {removed_count} icon(s) from library")
             console.print(
                 f"[green]✓[/green] Removed {removed_count} icon(s). "
                 f"Library now has {metadata.icon_count} icon(s): [cyan]{library_file}[/cyan]"

@@ -187,17 +187,17 @@ def add(
             # Only one dimension specified - warn user
             console.print(
                 "[yellow]Warning:[/yellow] Both --width and --height must be specified for fixed dimensions. "
-                "Using original dimensions instead.",
+                "Using default sizing instead.",
                 style="bold",
             )
             max_dimension = None
-            logger.warning("Only one dimension specified, using original dimensions")
+            logger.warning("Only one dimension specified, using default sizing")
         elif max_size is not None:
             max_dimension = max_size
             logger.info(f"Using proportional scaling with max dimension: {max_size}")
         else:
             max_dimension = None
-            logger.info("Using original dimensions")
+            logger.info("Using default sizing: max dimension 40 (aspect ratio preserved)")
 
         # Create processing options
         options = SVGProcessingOptions(add_css=css)
@@ -229,6 +229,7 @@ def add(
             library_file, new_icons, replace_duplicates=replace, add_duplicates=add_dupes
         )
 
+        logger.info(f"Successfully updated library: {library_file}")
         console.print(
             f"[green]✓[/green] Updated library with {metadata.icon_count} total icon(s): "
             f"[cyan]{library_file}[/cyan]"

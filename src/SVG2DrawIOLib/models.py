@@ -79,8 +79,8 @@ class DrawIOIcon:
         """
         return {
             "xml": self.xml_data.decode("ascii"),
-            "w": int(self.dimensions.width),
-            "h": int(self.dimensions.height),
+            "w": round(self.dimensions.width),
+            "h": round(self.dimensions.height),
             "aspect": "fixed",
             "title": self.name,
         }

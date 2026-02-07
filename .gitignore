@@ -31,3 +31,10 @@ DEPLOYMENT_CHECKLIST.md
 
 # Testing Resources
 resources/
+
+# Debug Scripts
+debug/
+
+# Temporary test files
+/test_*.xml
+/test_*.py

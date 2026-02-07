@@ -293,14 +293,13 @@ from SVG2DrawIOLib.models import SVGDimensions
 
 # Proportional scaling from max dimension
 dims = SVGDimensions.from_max_dimension(
-    original_width=100,
-    original_height=200,
-    max_dimension=64
+    max_dimension=64,
+    aspect_ratio=2.0  # width/height ratio
 )
-print(f"Scaled to: {dims.width}x{dims.height}")  # 32x64
+print(f"Scaled to: {dims.width}x{dims.height}")  # 64x32
 
 # Fixed dimensions
-dims = SVGDimensions(width=50, height=50)
+dims = SVGDimensions.from_fixed_dimensions(width=50, height=50)
 ```
 
 ## Common Tasks
