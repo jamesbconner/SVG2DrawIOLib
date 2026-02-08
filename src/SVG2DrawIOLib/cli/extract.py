@@ -85,7 +85,7 @@ def extract(
       # Overwrite existing files
       SVG2DrawIOLib extract -l icons.xml -o ./output --overwrite
     """
-    logger = setup_logging(verbose, quiet)
+    setup_logging(verbose, quiet)
     logger = logging.getLogger(__name__)
 
     try:
