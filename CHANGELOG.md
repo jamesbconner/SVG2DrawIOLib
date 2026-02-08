@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Source Files Tracking**: Added optional `source_files` parameter to `create_library()` and `add_icons_to_library()` methods in `LibraryManager`. CLI commands (`create` and `add`) now pass source file lists to enable programmatic tracking of which SVG files were used to create library icons. This metadata is stored in the returned `LibraryMetadata` object for use by programmatic consumers.
 - **Windows Makefile Support**: Added `make clean-win` target for cleaning build artifacts and caches on Windows systems using native Windows commands (rmdir, del) instead of Unix commands (rm, find).
 - **Source Archive Creation**: Added `make zip` target to create a clean source archive (`SVG2DrawIOLib-source.zip`) that respects `.gitignore` configuration using `git archive`.
 - **Lowercase Command Alias**: Added `svg2drawiolib` as a lowercase alias for the main `SVG2DrawIOLib` command. Both commands are functionally identical and can be used interchangeably.

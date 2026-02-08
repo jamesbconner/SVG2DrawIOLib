@@ -226,7 +226,11 @@ def add(
         # Add to library
         manager = LibraryManager()
         metadata = manager.add_icons_to_library(
-            library_file, new_icons, replace_duplicates=replace, add_duplicates=add_dupes
+            library_file,
+            new_icons,
+            replace_duplicates=replace,
+            add_duplicates=add_dupes,
+            source_files=svg_files,
         )
 
         logger.info(f"Successfully updated library: {library_file}")

@@ -227,7 +227,7 @@ def create(
 
         # Create library
         manager = LibraryManager()
-        metadata = manager.create_library(icons, output)
+        metadata = manager.create_library(icons, output, source_files=svg_files)
 
         logger.info(f"Successfully created library: {output}")
         console.print(
