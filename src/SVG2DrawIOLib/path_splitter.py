@@ -108,7 +108,7 @@ class PathSplitter:
                     for attr, value in path_elem.attrib.items():
                         if attr not in ("d", "id"):
                             new_path.set(attr, value)
-                    
+
                     # If original had an id, create unique ids for split paths
                     original_id = path_elem.get("id")
                     if original_id:

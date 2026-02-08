@@ -20,6 +20,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **CSS Class Preservation**: Fixed `add_css_classes()` method to preserve existing CSS class attributes instead of overwriting them. This allows split paths to maintain their assigned classes through the processing pipeline.
+- **Multi-Class CSS Selectors**: Fixed CSS selector generation for elements with multiple space-separated classes. Now uses only the first class for the selector instead of creating invalid descendant selectors.
+- **Duplicate CSS Selectors**: Fixed duplicate CSS selector generation when multiple elements share the same class. Now only generates one CSS rule per unique class, using the first occurrence's fill color.
+- **Duplicate ID Attributes**: Fixed path splitting to create unique IDs (`originalid-0`, `originalid-1`, etc.) when the original path has an `id` attribute, preventing SVG/XML validation errors.
 
 ### Changed
 
