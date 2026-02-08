@@ -462,3 +462,51 @@ class TestPathSplitter:
             assert total_paths == 2, f"Expected 2 paths, got {total_paths}"
         finally:
             svgelements.Path.bbox = original_bbox
+
+    def test_split_paths_preserves_original_on_exception(
+        self, splitter: PathSplitter, tmp_path: Path
+    ) -> None:
+        """Test that original path is preserved if exception occurs during split."""
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+    <path d="M10,10 L40,40 Z M60,60 L90,90 Z" fill="#ff0000"/>
+</svg>"""
+        svg_file = tmp_path / "test.svg"
+        svg_file.write_text(svg_content)
+        output = tmp_path / "output.svg"
+
+        # Mock the group creation to raise an exception
+        original_group_method = splitter._group_paths_with_holes
+
+        def mock_group_paths_with_holes(subpaths):
+            # Call original to get groups
+            _ = original_group_method(subpaths)
+            # But then raise an exception to simulate failure during processing
+            raise RuntimeError("Test exception during path processing")
+
+        splitter._group_paths_with_holes = mock_group_paths_with_holes
+
+        try:
+            result = splitter.split_svg_paths(svg_file, output)
+            assert result is not None
+
+            # Parse output and verify original path is still present
+            import xml.etree.ElementTree as ET
+
+            tree = ET.parse(output)
+            root = tree.getroot()
+            paths = list(root.iter("{http://www.w3.org/2000/svg}path"))
+
+            # Should have exactly 1 path (the original, unsplit)
+            assert len(paths) == 1, f"Expected 1 path (original), got {len(paths)}"
+
+            # The original path should still have BOTH subpaths in its d attribute
+            original_path = paths[0]
+            d_attr = original_path.get("d", "")
+            # Both M commands should be present in the original compound path
+            assert "M10,10" in d_attr and "M60,60" in d_attr, (
+                f"Original compound path should have both subpaths, got: {d_attr}"
+            )
+
+        finally:
+            splitter._group_paths_with_holes = original_group_method

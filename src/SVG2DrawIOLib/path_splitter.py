@@ -15,7 +15,7 @@ class PathSplitter:
         """Initialize the PathSplitter."""
         pass
 
-    def split_svg_paths(self, input_path: Path, output_path: Path) -> dict[str, int] | None:
+    def split_svg_paths(self, input_path: Path, output_path: Path) -> dict[str, int]:
         """Split compound paths in an SVG file.
 
         Args:
@@ -23,7 +23,10 @@ class PathSplitter:
             output_path: Path to output SVG file.
 
         Returns:
-            Dictionary with statistics about the split operation, or None on failure.
+            Dictionary with statistics about the split operation.
+
+        Raises:
+            ImportError: If svgelements library is not installed.
         """
         try:
             import svgelements
@@ -84,45 +87,55 @@ class PathSplitter:
 
                 index = list(parent).index(path_elem)
 
-                # Remove original path
-                parent.remove(path_elem)
+                # Create new paths first (before removing original)
+                # If any exception occurs, skip this path entirely
+                try:
+                    new_paths = []
+                    for group_idx, group in enumerate(groups):
+                        # Create path element with proper namespace
+                        new_path = ET.Element("{http://www.w3.org/2000/svg}path")
 
-                # Add grouped paths
-                for group_idx, group in enumerate(groups):
-                    # Create path element with proper namespace
-                    new_path = ET.Element("{http://www.w3.org/2000/svg}path")
+                        # Combine paths in group (for holes)
+                        if len(group) > 1:
+                            combined_d = " ".join(sp.d() for sp in group)
+                            holes_preserved += len(group) - 1
+                            logger.debug(
+                                f"Group {group_idx} has {len(group)} path(s) (preserving holes)"
+                            )
+                        else:
+                            combined_d = group[0].d()
 
-                    # Combine paths in group (for holes)
-                    if len(group) > 1:
-                        combined_d = " ".join(sp.d() for sp in group)
-                        holes_preserved += len(group) - 1
-                        logger.debug(
-                            f"Group {group_idx} has {len(group)} path(s) (preserving holes)"
-                        )
-                    else:
-                        combined_d = group[0].d()
+                        new_path.set("d", combined_d)
 
-                    new_path.set("d", combined_d)
+                        # Copy attributes from original (fill, stroke, etc.)
+                        # Skip 'd' and 'id' to avoid duplicates
+                        for attr, value in path_elem.attrib.items():
+                            if attr not in ("d", "id"):
+                                new_path.set(attr, value)
 
-                    # Copy attributes from original (fill, stroke, etc.)
-                    # Skip 'd' and 'id' to avoid duplicates
-                    for attr, value in path_elem.attrib.items():
-                        if attr not in ("d", "id"):
-                            new_path.set(attr, value)
+                        # If original had an id, create unique ids for split paths
+                        original_id = path_elem.get("id")
+                        if original_id:
+                            new_path.set("id", f"{original_id}-{group_idx}")
 
-                    # If original had an id, create unique ids for split paths
-                    original_id = path_elem.get("id")
-                    if original_id:
-                        new_path.set("id", f"{original_id}-{group_idx}")
+                        # Add CSS class for color control using global counter
+                        existing_class = new_path.get("class", "")
+                        new_class = f"{existing_class} path{global_path_counter}".strip()
+                        new_path.set("class", new_class)
+                        global_path_counter += 1
 
-                    # Add CSS class for color control using global counter
-                    existing_class = new_path.get("class", "")
-                    new_class = f"{existing_class} path{global_path_counter}".strip()
-                    new_path.set("class", new_class)
-                    global_path_counter += 1
+                        new_paths.append(new_path)
 
-                    parent.insert(index + group_idx, new_path)
-                    subpaths_created += 1
+                    # Only remove original and insert new paths if all succeeded
+                    parent.remove(path_elem)
+                    for group_idx, new_path in enumerate(new_paths):
+                        parent.insert(index + group_idx, new_path)
+                        subpaths_created += 1
+
+                except Exception as e:
+                    logger.warning(f"Failed to create split paths: {e}")
+                    # Skip this path, leaving original intact
+                    continue
 
             except Exception as e:
                 logger.warning(f"Failed to split path: {e}")
