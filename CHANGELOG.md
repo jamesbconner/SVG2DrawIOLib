@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **SVG Namespace Correctness**: Fixed `<style>` element creation in `add_css_classes()` to use proper SVG namespace. The style element is now created as `{http://www.w3.org/2000/svg}style` instead of a non-namespaced element, improving standards compliance and compatibility with strict XML parsers. The style element is now inserted inside `<defs>` if it exists, or at the top of the document otherwise, following SVG best practices.
+- **Compression Robustness**: Fixed `_compress_and_encode()` to use `wbits=-15` for generating raw DEFLATE directly instead of manually stripping zlib header and checksum bytes. This "correct by construction" approach is more robust and follows zlib best practices, eliminating assumptions about wrapper structure.
 
 ### Changed
 

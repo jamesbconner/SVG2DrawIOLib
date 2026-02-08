@@ -914,8 +914,8 @@ class SVGProcessor:
     def _compress_and_encode(self, xml_bytes: bytes) -> bytes:
         """Compress XML with zlib and base64 encode.
 
-        DrawIO uses zlib compression for XML content. This strips the zlib
-        header and checksum before base64 encoding.
+        DrawIO uses raw DEFLATE compression (without zlib header/checksum).
+        Uses wbits=-15 to generate raw DEFLATE directly instead of stripping bytes.
 
         Args:
             xml_bytes: XML bytes to compress.
@@ -923,9 +923,9 @@ class SVGProcessor:
         Returns:
             Base64-encoded compressed bytes.
         """
-        compressed = zlib.compress(xml_bytes)
-        # Strip zlib header (2 bytes) and checksum (4 bytes)
-        raw_deflate = compressed[2:-4]
+        # Generate raw DEFLATE directly using wbits=-15 (no zlib wrapper)
+        co = zlib.compressobj(level=9, wbits=-15)
+        raw_deflate = co.compress(xml_bytes) + co.flush()
         encoded = base64.b64encode(raw_deflate)
 
         logger.debug(
