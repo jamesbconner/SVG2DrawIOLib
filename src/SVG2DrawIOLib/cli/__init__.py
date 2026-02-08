@@ -52,7 +52,17 @@ rc.rich_click.COMMAND_GROUPS = {
                 "border_style": "blue",
                 "box": "ROUNDED",
             },
-        }
+        },
+        {
+            "name": "SVG Processing Commands",
+            "commands": ["split-paths"],
+            "table_styles": {
+                "show_lines": True,
+                "row_styles": ["none"],
+                "border_style": "green",
+                "box": "ROUNDED",
+            },
+        },
     ]
 }
 
@@ -104,6 +114,16 @@ rc.rich_click.OPTION_GROUPS = {
         {
             "name": "Options",
             "options": ["--verbose", "--quiet", "--help"],
+        },
+    ],
+    "SVG2DrawIOLib split-paths": [
+        {
+            "name": "Required Options",
+            "options": ["--output"],
+        },
+        {
+            "name": "General Options",
+            "options": ["--verbose", "--help"],
         },
     ],
 }

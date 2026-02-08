@@ -107,6 +107,26 @@ List all icons in a library:
 SVG2DrawIOLib list my-library.xml
 ```
 
+### Split Compound Paths
+
+Split SVG paths with multiple shapes into separate paths for per-path color control:
+
+```bash
+# Split compound paths in an SVG
+SVG2DrawIOLib split-paths icon.svg -o icon-split.svg
+
+# Then create library with CSS enabled
+SVG2DrawIOLib create icon-split.svg --css -o colorable-icon.xml
+```
+
+This command:
+- Detects paths with multiple M/m (moveto) commands
+- Splits them into separate path elements
+- Automatically preserves "donut holes" (nested paths)
+- Adds CSS classes for individual color control
+
+Useful for icons that have a single compound path but multiple distinct shapes.
+
 ## Advanced Features
 
 ### Color Editing
@@ -117,7 +137,7 @@ Enable color customization in DrawIO by injecting CSS classes:
 SVG2DrawIOLib create icons/ --css -o colorable-icons.xml
 ```
 
-This allows users to change icon colors directly in DrawIO's interface.
+This allows users to change icon colors directly in DrawIO's interface. For icons with compound paths (single path containing multiple shapes), use `split-paths` first to enable per-shape color control.
 
 ### Proportional Scaling
 
