@@ -82,8 +82,13 @@ class SVGProcessor:
 
         element_count = 0
         for index, element in enumerate(root.iter(tag)):
-            class_name = f"path{index}"
-            element.set("class", class_name)
+            # Preserve existing class if present, otherwise create new one
+            existing_class = element.get("class", "")
+            if existing_class:
+                class_name = existing_class.strip()
+            else:
+                class_name = f"path{index}"
+                element.set("class", class_name)
 
             # Preserve original fill color, or use default if none specified
             original_fill = element.get("fill", default_color)

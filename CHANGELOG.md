@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-02-08
+
+### Added
+
+- **Path Splitting Command**: New `split-paths` subcommand for splitting compound SVG paths into separate path elements for per-path color control.
+  - Automatically detects paths with multiple M/m (moveto) commands
+  - Splits them into separate path elements with individual CSS classes
+  - Intelligently preserves "donut holes" by detecting nested paths via bounding box containment
+  - Enables per-path color customization when combined with `--css` flag with the `create` or `add` commands
+- **PathSplitter Class**: New `path_splitter.py` module with hole detection algorithm
+- **Comprehensive Test Suite**: Added 7 new tests for path splitting functionality
+
+### Fixed
+
+- **CSS Class Preservation**: Fixed `add_css_classes()` method to preserve existing CSS class attributes instead of overwriting them. This allows split paths to maintain their assigned classes through the processing pipeline.
+
+### Changed
+
+- **CLI Command Groups**: Updated CLI help to include new "SVG Processing Commands" group for `split-paths`
+- **Namespace Handling**: Improved SVG namespace registration to avoid `ns0:` prefixes in output files
+
 ## [1.0.1] - 2026-02-07
 
 ### Added
