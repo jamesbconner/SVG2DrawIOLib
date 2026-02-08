@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.2] - 2026-02-08
+
+### Changed
+
+- **Error Handling**: Refactored all CLI commands to use `rich_click.ClickException` and `rich_click.Abort()` instead of `sys.exit()` for better error handling and consistency with the Click framework. This provides cleaner exception handling and more idiomatic Click code.
+
+### Added
+
+- **Windows Makefile Support**: Added `make clean-win` target for cleaning build artifacts and caches on Windows systems using native Windows commands (rmdir, del) instead of Unix commands (rm, find).
+- **Source Archive Creation**: Added `make zip` target to create a clean source archive (`SVG2DrawIOLib-source.zip`) that respects `.gitignore` configuration using `git archive`.
+- **Lowercase Command Alias**: Added `svg2drawiolib` as a lowercase alias for the main `SVG2DrawIOLib` command. Both commands are functionally identical and can be used interchangeably.
+
 ## [1.1.1] - 2026-02-08
 
 ### Fixed
@@ -22,11 +34,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Bold cyan command titles with rich markup
   - Preserved formatting using literal blocks (`\b`)
   - Structured sections (e.g., "Duplicate Handling:", "Scaling Options:", "Examples:")
-
-### Added
-
-- **Windows Makefile Support**: Added `make clean-win` target for cleaning build artifacts and caches on Windows systems using native Windows commands (rmdir, del) instead of Unix commands (rm, find).
-- **Source Archive Creation**: Added `make zip` target to create a clean source archive (`SVG2DrawIOLib-source.zip`) that respects `.gitignore` configuration using `git archive`.
 
 ## [1.1.0] - 2026-02-08
 

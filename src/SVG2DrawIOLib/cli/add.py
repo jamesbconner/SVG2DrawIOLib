@@ -1,7 +1,6 @@
 """Add command - Add SVG icons to an existing DrawIO library."""
 
 import logging
-import sys
 from pathlib import Path
 
 import rich_click as rc
@@ -150,7 +149,7 @@ def add(
             console.print(
                 "[red]Error:[/red] Cannot use both --replace and --add-dupes", style="bold"
             )
-            sys.exit(1)
+            raise rc.ClickException("Cannot use both --replace and --add-dupes")
 
         # Collect all SVG files from paths (files and/or directories)
         svg_files = []
@@ -177,7 +176,7 @@ def add(
         # Validate we found files
         if not svg_files:
             console.print("[red]Error:[/red] No SVG files found in specified paths", style="bold")
-            sys.exit(1)
+            raise rc.ClickException("No SVG files found in specified paths")
 
         # Determine sizing strategy
         if width is not None and height is not None:
@@ -222,7 +221,7 @@ def add(
                 logger.error(f"Failed to process {svg_path}: {e}")
                 if verbose:
                     raise
-                sys.exit(1)
+                raise rc.ClickException(f"Failed to process {svg_path}: {e}") from e
 
         # Add to library
         manager = LibraryManager()
@@ -240,4 +239,4 @@ def add(
         logger.error(f"Failed to add icons to library: {e}")
         if verbose:
             raise
-        sys.exit(1)
+        raise rc.ClickException(f"Failed to add icons to library: {e}") from e

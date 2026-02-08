@@ -1,7 +1,6 @@
 """Create command - Create a new DrawIO library from SVG files."""
 
 import logging
-import sys
 from pathlib import Path
 
 import rich_click as rc
@@ -173,7 +172,7 @@ def create(
         # Validate we found files
         if not svg_files:
             console.print("[red]Error:[/red] No SVG files found in specified paths", style="bold")
-            sys.exit(1)
+            raise rc.ClickException("No SVG files found in specified paths")
 
         # Determine sizing strategy
         if width is not None and height is not None:
@@ -224,7 +223,7 @@ def create(
                 logger.error(f"Failed to process {svg_path}: {e}")
                 if verbose:
                     raise
-                sys.exit(1)
+                raise rc.ClickException(f"Failed to process {svg_path}: {e}") from e
 
         # Create library
         manager = LibraryManager()
@@ -238,9 +237,9 @@ def create(
 
     except KeyboardInterrupt:
         console.print("\n[yellow]Interrupted by user[/yellow]")
-        sys.exit(130)
+        raise rc.Abort() from None
     except Exception as e:
         logger.error(f"Failed to create library: {e}")
         if verbose:
             raise
-        sys.exit(1)
+        raise rc.ClickException(f"Failed to create library: {e}") from e
