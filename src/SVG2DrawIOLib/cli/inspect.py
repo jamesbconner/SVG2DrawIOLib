@@ -3,6 +3,7 @@
 import json
 import logging
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import rich_click as rc
 from rich.panel import Panel
@@ -12,6 +13,9 @@ from rich.table import Table
 from SVG2DrawIOLib.cli.helpers import console, setup_logging
 from SVG2DrawIOLib.icon_analyzer import IconAnalyzer
 from SVG2DrawIOLib.library_manager import LibraryManager
+
+if TYPE_CHECKING:
+    from SVG2DrawIOLib.models import DrawIOIcon
 
 
 @rc.command()
@@ -167,7 +171,7 @@ def inspect(
         raise rc.ClickException(f"Failed to inspect library: {e}") from e
 
 
-def _collect_icon_info(icon, show_svg: bool, logger: logging.Logger) -> dict:
+def _collect_icon_info(icon: "DrawIOIcon", show_svg: bool, logger: logging.Logger) -> dict:
     """Collect detailed information about a single icon as a dictionary.
 
     Args:
@@ -193,7 +197,7 @@ def _collect_icon_info(icon, show_svg: bool, logger: logging.Logger) -> dict:
         }
 
 
-def _display_icon_info(icon, show_svg: bool, logger: logging.Logger) -> None:
+def _display_icon_info(icon: "DrawIOIcon", show_svg: bool, logger: logging.Logger) -> None:
     """Display detailed information about a single icon.
 
     Args:
