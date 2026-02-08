@@ -238,6 +238,9 @@ def create(
     except KeyboardInterrupt:
         console.print("\n[yellow]Interrupted by user[/yellow]")
         raise rc.Abort() from None
+    except rc.ClickException:
+        # Re-raise ClickException from inner handlers without wrapping
+        raise
     except Exception as e:
         logger.error(f"Failed to create library: {e}")
         if verbose:

@@ -239,6 +239,9 @@ def add(
             f"[cyan]{library_file}[/cyan]"
         )
 
+    except rc.ClickException:
+        # Re-raise ClickException from inner handlers without wrapping
+        raise
     except Exception as e:
         logger.error(f"Failed to add icons to library: {e}")
         if verbose:
