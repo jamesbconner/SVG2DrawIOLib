@@ -78,7 +78,7 @@ class DrawIOIcon:
             Dictionary with DrawIO library format fields.
         """
         return {
-            "xml": self.xml_data.decode("ascii"),
+            "xml": self.xml_data.decode("utf-8"),
             "w": round(self.dimensions.width),
             "h": round(self.dimensions.height),
             "aspect": "fixed",

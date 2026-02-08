@@ -99,7 +99,7 @@ class LibraryManager:
 
                 icon = DrawIOIcon(
                     name=item["title"],
-                    xml_data=item["xml"].encode("ascii"),
+                    xml_data=item["xml"].encode("utf-8"),
                     dimensions=SVGDimensions(width=item["w"], height=item["h"]),
                 )
                 icons.append(icon)

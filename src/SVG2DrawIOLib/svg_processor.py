@@ -789,7 +789,7 @@ class SVGProcessor:
             raise ValueError("SVG tree has no root element")
 
         svg_bytes = ET.tostring(root)
-        encoded = base64.b64encode(svg_bytes).decode("ascii")
+        encoded = base64.b64encode(svg_bytes).decode("utf-8")
         logger.debug(f"Generated SVG data URI (length: {len(encoded)} chars)")
         return f"data:image/svg+xml,{encoded}"
 

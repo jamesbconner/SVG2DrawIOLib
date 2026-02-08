@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **Error Handling**: Refactored all CLI commands to use `rich_click.ClickException` and `rich_click.Abort()` instead of `sys.exit()` for better error handling and consistency with the Click framework. This provides cleaner exception handling and more idiomatic Click code.
+- **String Encoding Consistency**: Updated all string encoding/decoding operations to use UTF-8 instead of ASCII for better consistency and future-proofing. This affects `DrawIOIcon.to_dict()`, `LibraryManager.load_library()`, and `SVGProcessor.svg_to_data_uri()`. While base64 strings are ASCII-safe, UTF-8 is more explicit and handles any future character set requirements.
 
 ### Added
 
