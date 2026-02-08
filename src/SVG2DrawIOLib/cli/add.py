@@ -91,13 +91,14 @@ def add(
     quiet: bool,
     recursive: bool,
 ) -> None:
-    """Add SVG icons to an existing DrawIO library.
+    """[bold cyan]Add SVG icons to an existing DrawIO library.[/]
 
-    Processes SVG files and adds them to an existing library.
-    By default, skips icons with duplicate names.
+    \b
+    \nProcesses SVG files and adds them to an existing library. By default,
+    skips icons with duplicate names.
 
     Accepts individual SVG files, directories, or a mix of both.
-    Use --recursive to search subdirectories.
+    Use --recursive to include subdirectories.
 
     \b
     Duplicate Handling:

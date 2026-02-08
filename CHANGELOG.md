@@ -17,7 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Updated `split-paths` command to use `setup_logging()` helper function instead of `logging.basicConfig()`, matching all other CLI commands.
   - Made error messages more descriptive with operation context (e.g., "Failed to create library" instead of "Unexpected error").
   - Moved logger initialization in `split-paths` from module-level to function-level for consistency with other commands.
-- **CLI Framework Consistency**: Updated `split-paths` command to use `rich_click` instead of plain `click`.
+- **CLI Framework Consistency**: Updated `split-paths` command to use `rich_click` instead of plain `click`, matching all other CLI commands.
+- **CLI Help Text Formatting**: Reformatted docstrings for all CLI commands to provide consistent, well-structured help output with:
+  - Bold cyan command titles with rich markup
+  - Preserved formatting using literal blocks (`\b`)
+  - Structured sections (e.g., "Duplicate Handling:", "Scaling Options:", "Examples:")
 
 ## [1.1.0] - 2026-02-08
 

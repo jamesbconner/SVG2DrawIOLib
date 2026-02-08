@@ -26,19 +26,22 @@ from SVG2DrawIOLib.path_splitter import PathSplitter
     help="Enable verbose output",
 )
 def split_paths(input_file: Path, output: Path, verbose: bool) -> None:
-    """Split compound SVG paths into individual subpaths.
+    """[bold cyan]Split compound SVG paths into individual subpaths.[/]
 
-    This command splits SVG paths that contain multiple shapes (indicated by
+    \b
+    \nThis command splits SVG paths that contain multiple shapes (indicated by
     multiple M/m commands) into separate path elements. This enables per-path
     color customization when used with DrawIO's CSS editing feature.
 
+    \b
     The command automatically detects and preserves "donut holes" (paths contained
     within other paths) to maintain cutout effects.
 
+    \b
     Example:
-
         SVG2DrawIOLib split-paths icon.svg -o icon-split.svg
 
+    \b
     The output SVG can then be used with the 'create' or 'add' commands with
     the --css flag to enable color editing in DrawIO.
     """

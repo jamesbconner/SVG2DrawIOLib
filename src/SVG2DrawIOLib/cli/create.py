@@ -103,11 +103,13 @@ def create(
     quiet: bool,
     recursive: bool,
 ) -> None:
-    """Create a new DrawIO library from SVG files.
+    """[bold cyan]Create a new DrawIO library from SVG files.[/]
 
-    Converts one or more SVG files into a DrawIO library XML file.
+    \b
+    \nConverts one or more SVG files into a DrawIO library XML file.
     Icons can be scaled proportionally or set to fixed dimensions.
 
+    \b
     Accepts individual SVG files, directories, or a mix of both.
     Use --recursive to search subdirectories.
 
@@ -117,6 +119,7 @@ def create(
         --width/--height: Set fixed dimensions (ignores aspect ratio)
         Neither: Use default 40x40 pixels
 
+    \b
     Examples:
         Create from individual files:
         $ SVG2DrawIOLib create icon1.svg icon2.svg -o lib.xml

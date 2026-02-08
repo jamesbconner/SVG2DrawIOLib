@@ -38,7 +38,7 @@ rc.rich_click.STYLE_HELPTEXT = ""
 rc.rich_click.STYLE_OPTION_HELP = ""
 rc.rich_click.STYLE_OPTION_DEFAULT = "dim"
 rc.rich_click.STYLE_REQUIRED_SHORT = "red"
-rc.rich_click.STYLE_REQUIRED_LONG = "dim red"
+rc.rich_click.STYLE_REQUIRED_LONG = "red"
 rc.rich_click.ALIGN_OPTIONS_PANEL = "left"
 rc.rich_click.ALIGN_ARGUMENTS_PANEL = "left"
 
@@ -136,9 +136,10 @@ logger = logging.getLogger(__name__)
 @rc.group()
 @rc.version_option(version=__version__, prog_name="SVG2DrawIOLib")
 def cli() -> None:
-    """SVG2DrawIOLib - Manage DrawIO/diagrams.net shape libraries.
+    """[bold cyan]SVG2DrawIOLib - Manage DrawIO/diagrams.net shape libraries.[/]
 
-    Convert SVG files into DrawIO libraries and manage existing libraries.
+    \b
+    \nConvert SVG files into DrawIO libraries and manage existing libraries.
     Supports color-editable icons and proportional scaling.
 
     \b
@@ -146,8 +147,10 @@ def cli() -> None:
         Create a new library from SVG files:
         $ SVG2DrawIOLib create icons/*.svg -o my-library.xml
 
+
         Add icons to an existing library:
         $ SVG2DrawIOLib add my-library.xml new-icon.svg
+
 
         List icons in a library:
         $ SVG2DrawIOLib list my-library.xml
