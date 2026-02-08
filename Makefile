@@ -50,7 +50,7 @@ clean-win: ## Clean build artifacts and caches (Windows)
 	@if exist dist rmdir /s /q dist
 	@if exist build rmdir /s /q build
 	@if exist htmlcov rmdir /s /q htmlcov
-	@if exist htmlcov rmdir /s /q .coverage
+	@if exist .coverage rmdir /s /q .coverage
 	@if exist .pytest_cache rmdir /s /q .pytest_cache
 	@if exist .mypy_cache rmdir /s /q .mypy_cache
 	@if exist .ruff_cache rmdir /s /q .ruff_cache
