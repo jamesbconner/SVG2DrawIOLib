@@ -33,7 +33,6 @@ dependencies = [
   "click>=8.1.0",
   "rich>=13.0.0",
   "rich-click>=1.8.0",
-  "lxml>=5.0.0",
   "svgelements>=1.9.0",
 ]
 dynamic = ["version"]
@@ -60,6 +59,7 @@ Changelog = "https://github.com/jamesbconner/SVG2DrawIOLib/blob/main/CHANGELOG.m
 
 [project.scripts]
 SVG2DrawIOLib = "SVG2DrawIOLib.cli:cli"
+svg2drawiolib = "SVG2DrawIOLib.cli:cli"
 
 [tool.hatch.version]
 path = "src/SVG2DrawIOLib/__about__.py"

@@ -1,7 +1,6 @@
 """Split compound SVG paths into individual subpaths for color customization."""
 
 import logging
-import sys
 from pathlib import Path
 
 import rich_click as rc
@@ -71,4 +70,4 @@ def split_paths(input_file: Path, output: Path, verbose: bool) -> None:
         logger.error(f"Failed to split paths: {e}")
         if verbose:
             raise
-        sys.exit(1)
+        raise rc.ClickException(f"Failed to split paths: {e}") from e

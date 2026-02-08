@@ -732,7 +732,7 @@ class TestCreateCommandEdgeCases:
         output = tmp_path / "output.xml"
         result = runner.invoke(cli, ["create", str(sample_svg), "-o", str(output)])
 
-        assert result.exit_code == 130
+        assert result.exit_code == 1  # rc.Abort() uses exit code 1
         assert "Interrupted by user" in result.output
 
     def test_create_with_unexpected_error_verbose(

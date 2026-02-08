@@ -76,7 +76,8 @@ class SVGProcessor:
 
         logger.debug(f"Adding CSS classes to <{tag}> elements")
 
-        style = ET.Element("style")
+        # Create properly namespaced style element
+        style = ET.Element(f"{{{self.options.xml_namespace}}}style")
         style.set("type", "text/css")
         style.text = ""
 
@@ -105,8 +106,16 @@ class SVGProcessor:
             element_count += 1
 
         if element_count > 0:
-            root.append(style)
-            logger.debug(f"Added CSS classes to {element_count} elements")
+            # Insert style element in proper location (inside defs or at top)
+            defs = root.find(f"{{{self.options.xml_namespace}}}defs")
+            if defs is not None:
+                # Insert at start of defs element
+                defs.insert(0, style)
+                logger.debug(f"Added CSS classes to {element_count} elements (style in <defs>)")
+            else:
+                # Insert as first child of root
+                root.insert(0, style)
+                logger.debug(f"Added CSS classes to {element_count} elements (style at top)")
         else:
             logger.warning(f"No <{tag}> elements found in SVG")
 
@@ -780,7 +789,7 @@ class SVGProcessor:
             raise ValueError("SVG tree has no root element")
 
         svg_bytes = ET.tostring(root)
-        encoded = base64.b64encode(svg_bytes).decode("ascii")
+        encoded = base64.b64encode(svg_bytes).decode("utf-8")
         logger.debug(f"Generated SVG data URI (length: {len(encoded)} chars)")
         return f"data:image/svg+xml,{encoded}"
 
@@ -905,8 +914,8 @@ class SVGProcessor:
     def _compress_and_encode(self, xml_bytes: bytes) -> bytes:
         """Compress XML with zlib and base64 encode.
 
-        DrawIO uses zlib compression for XML content. This strips the zlib
-        header and checksum before base64 encoding.
+        DrawIO uses raw DEFLATE compression (without zlib header/checksum).
+        Uses wbits=-15 to generate raw DEFLATE directly instead of stripping bytes.
 
         Args:
             xml_bytes: XML bytes to compress.
@@ -914,9 +923,9 @@ class SVGProcessor:
         Returns:
             Base64-encoded compressed bytes.
         """
-        compressed = zlib.compress(xml_bytes)
-        # Strip zlib header (2 bytes) and checksum (4 bytes)
-        raw_deflate = compressed[2:-4]
+        # Generate raw DEFLATE directly using wbits=-15 (no zlib wrapper)
+        co = zlib.compressobj(level=9, wbits=-15)
+        raw_deflate = co.compress(xml_bytes) + co.flush()
         encoded = base64.b64encode(raw_deflate)
 
         logger.debug(

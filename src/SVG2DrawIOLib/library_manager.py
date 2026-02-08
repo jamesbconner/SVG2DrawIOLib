@@ -17,12 +17,15 @@ class LibraryManager:
         """Initialize the library manager."""
         pass
 
-    def create_library(self, icons: list[DrawIOIcon], output_path: Path) -> LibraryMetadata:
+    def create_library(
+        self, icons: list[DrawIOIcon], output_path: Path, source_files: list[Path] | None = None
+    ) -> LibraryMetadata:
         """Create a new DrawIO library from icons.
 
         Args:
             icons: List of DrawIO icons to include.
             output_path: Path where the library file will be saved.
+            source_files: Optional list of source SVG file paths for metadata tracking.
 
         Returns:
             LibraryMetadata with information about the created library.
@@ -54,7 +57,7 @@ class LibraryManager:
         return LibraryMetadata(
             name=output_path.stem,
             icon_count=len(icons),
-            source_files=[],
+            source_files=source_files or [],
         )
 
     def load_library(self, library_path: Path) -> list[DrawIOIcon]:
@@ -99,7 +102,7 @@ class LibraryManager:
 
                 icon = DrawIOIcon(
                     name=item["title"],
-                    xml_data=item["xml"].encode("ascii"),
+                    xml_data=item["xml"].encode("utf-8"),
                     dimensions=SVGDimensions(width=item["w"], height=item["h"]),
                 )
                 icons.append(icon)
@@ -120,6 +123,7 @@ class LibraryManager:
         new_icons: list[DrawIOIcon],
         replace_duplicates: bool = False,
         add_duplicates: bool = False,
+        source_files: list[Path] | None = None,
     ) -> LibraryMetadata:
         """Add icons to an existing library.
 
@@ -128,6 +132,7 @@ class LibraryManager:
             new_icons: List of icons to add.
             replace_duplicates: If True, replace icons with duplicate names.
             add_duplicates: If True, add duplicates with modified names (e.g., icon_2, icon_3).
+            source_files: Optional list of source SVG file paths for the new icons.
 
         Returns:
             LibraryMetadata with updated library information.
@@ -222,7 +227,7 @@ class LibraryManager:
 
         # Save updated library
         all_icons = list(icon_map.values())
-        return self.create_library(all_icons, library_path)
+        return self.create_library(all_icons, library_path, source_files=source_files)
 
     def remove_icons_from_library(
         self, library_path: Path, icon_names: list[str]

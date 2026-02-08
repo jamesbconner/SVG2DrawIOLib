@@ -1,7 +1,6 @@
 """List command - List all icons in a DrawIO library."""
 
 import logging
-import sys
 from pathlib import Path
 
 import rich_click as rc
@@ -73,4 +72,4 @@ def list(
         logger.error(f"Failed to list icons: {e}")
         if verbose:
             raise
-        sys.exit(1)
+        raise rc.ClickException(f"Failed to list icons: {e}") from e

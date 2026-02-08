@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.2] - 2026-02-08
+
+### Fixed
+
+- **SVG Namespace Correctness**: Fixed `<style>` element creation in `add_css_classes()` to use proper SVG namespace. The style element is now created as `{http://www.w3.org/2000/svg}style` instead of a non-namespaced element, improving standards compliance and compatibility with strict XML parsers. The style element is now inserted inside `<defs>` if it exists, or at the top of the document otherwise, following SVG best practices.
+- **Compression Robustness**: Fixed `_compress_and_encode()` to use `wbits=-15` for generating raw DEFLATE directly instead of manually stripping zlib header and checksum bytes. This "correct by construction" approach is more robust and follows zlib best practices, eliminating assumptions about wrapper structure.
+
+### Changed
+
+- **Error Handling**: Refactored all CLI commands to use `rich_click.ClickException` and `rich_click.Abort()` instead of `sys.exit()` for better error handling and consistency with the Click framework. This provides cleaner exception handling and more idiomatic Click code.
+- **String Encoding Consistency**: Updated all string encoding/decoding operations to use UTF-8 instead of ASCII for better consistency and future-proofing. This affects `DrawIOIcon.to_dict()`, `LibraryManager.load_library()`, and `SVGProcessor.svg_to_data_uri()`. While base64 strings are ASCII-safe, UTF-8 is more explicit and handles any future character set requirements.
+
+### Added
+
+- **Source Files Tracking**: Added optional `source_files` parameter to `create_library()` and `add_icons_to_library()` methods in `LibraryManager`. CLI commands (`create` and `add`) now pass source file lists to enable programmatic tracking of which SVG files were used to create library icons. This metadata is stored in the returned `LibraryMetadata` object for use by programmatic consumers.
+- **Windows Makefile Support**: Added `make clean-win` target for cleaning build artifacts and caches on Windows systems using native Windows commands (rmdir, del) instead of Unix commands (rm, find).
+- **Source Archive Creation**: Added `make zip` target to create a clean source archive (`SVG2DrawIOLib-source.zip`) that respects `.gitignore` configuration using `git archive`.
+- **Lowercase Command Alias**: Added `svg2drawiolib` as a lowercase alias for the main `SVG2DrawIOLib` command. Both commands are functionally identical and can be used interchangeably.
+
 ## [1.1.1] - 2026-02-08
 
 ### Fixed

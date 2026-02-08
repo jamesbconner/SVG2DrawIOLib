@@ -1,7 +1,6 @@
 """Add command - Add SVG icons to an existing DrawIO library."""
 
 import logging
-import sys
 from pathlib import Path
 
 import rich_click as rc
@@ -150,7 +149,7 @@ def add(
             console.print(
                 "[red]Error:[/red] Cannot use both --replace and --add-dupes", style="bold"
             )
-            sys.exit(1)
+            raise rc.ClickException("Cannot use both --replace and --add-dupes")
 
         # Collect all SVG files from paths (files and/or directories)
         svg_files = []
@@ -177,7 +176,7 @@ def add(
         # Validate we found files
         if not svg_files:
             console.print("[red]Error:[/red] No SVG files found in specified paths", style="bold")
-            sys.exit(1)
+            raise rc.ClickException("No SVG files found in specified paths")
 
         # Determine sizing strategy
         if width is not None and height is not None:
@@ -222,12 +221,16 @@ def add(
                 logger.error(f"Failed to process {svg_path}: {e}")
                 if verbose:
                     raise
-                sys.exit(1)
+                raise rc.ClickException(f"Failed to process {svg_path}: {e}") from e
 
         # Add to library
         manager = LibraryManager()
         metadata = manager.add_icons_to_library(
-            library_file, new_icons, replace_duplicates=replace, add_duplicates=add_dupes
+            library_file,
+            new_icons,
+            replace_duplicates=replace,
+            add_duplicates=add_dupes,
+            source_files=svg_files,
         )
 
         logger.info(f"Successfully updated library: {library_file}")
@@ -236,8 +239,11 @@ def add(
             f"[cyan]{library_file}[/cyan]"
         )
 
+    except rc.ClickException:
+        # Re-raise ClickException from inner handlers without wrapping
+        raise
     except Exception as e:
         logger.error(f"Failed to add icons to library: {e}")
         if verbose:
             raise
-        sys.exit(1)
+        raise rc.ClickException(f"Failed to add icons to library: {e}") from e

@@ -50,6 +50,23 @@ class TestLibraryManager:
         assert metadata.name == "test_library"
         assert metadata.icon_count == 3
 
+    def test_create_library_with_source_files(
+        self, manager: LibraryManager, sample_icons: list[DrawIOIcon], tmp_path: Path
+    ) -> None:
+        """Test creating a library with source file tracking."""
+        output = tmp_path / "test_library.xml"
+        source_files = [
+            Path("icon_a.svg"),
+            Path("icon_b.svg"),
+            Path("icon_c.svg"),
+        ]
+        metadata = manager.create_library(sample_icons, output, source_files=source_files)
+
+        assert output.exists()
+        assert metadata.name == "test_library"
+        assert metadata.icon_count == 3
+        assert metadata.source_files == source_files
+
     def test_create_library_sorts_icons(
         self, manager: LibraryManager, sample_icons: list[DrawIOIcon], tmp_path: Path
     ) -> None:
@@ -108,6 +125,23 @@ class TestLibraryManager:
 
         loaded_icons = manager.load_library(output)
         assert len(loaded_icons) == 3
+
+    def test_add_icons_to_library_with_source_files(
+        self, manager: LibraryManager, sample_icons: list[DrawIOIcon], tmp_path: Path
+    ) -> None:
+        """Test adding icons with source file tracking."""
+        output = tmp_path / "test_library.xml"
+        manager.create_library(sample_icons[:2], output)
+
+        # Add one more icon with source file
+        new_icon = sample_icons[2]
+        source_files = [Path("icon_c.svg")]
+        metadata = manager.add_icons_to_library(
+            output, [new_icon], replace_duplicates=False, source_files=source_files
+        )
+
+        assert metadata.icon_count == 3
+        assert metadata.source_files == source_files
 
     def test_add_icons_skip_duplicates(
         self, manager: LibraryManager, sample_icons: list[DrawIOIcon], tmp_path: Path

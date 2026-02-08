@@ -1,7 +1,6 @@
 """Remove command - Remove icons from a DrawIO library by name."""
 
 import logging
-import sys
 from pathlib import Path
 
 import rich_click as rc
@@ -75,4 +74,4 @@ def remove(
         logger.error(f"Failed to remove icons: {e}")
         if verbose:
             raise
-        sys.exit(1)
+        raise rc.ClickException(f"Failed to remove icons: {e}") from e

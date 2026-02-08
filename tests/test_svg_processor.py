@@ -98,7 +98,7 @@ class TestSVGProcessor:
         assert len(paths) == 1
         assert paths[0].get("class") == "path0"
 
-        styles = list(root.iter("style"))
+        styles = list(root.iter("{http://www.w3.org/2000/svg}style"))
         assert len(styles) == 1
         # Should preserve original fill color (#000000), not use default (#FF0000)
         assert ".path0{fill:#000000;}" in styles[0].text
@@ -120,7 +120,7 @@ class TestSVGProcessor:
         modified = processor.add_css_classes(tree)
 
         root = modified.getroot()
-        styles = list(root.iter("style"))
+        styles = list(root.iter("{http://www.w3.org/2000/svg}style"))
         assert len(styles) == 1
         # Should use first class only, not create descendant selector
         assert ".myclass{fill:#ff0000;}" in styles[0].text
@@ -145,7 +145,7 @@ class TestSVGProcessor:
         modified = processor.add_css_classes(tree)
 
         root = modified.getroot()
-        styles = list(root.iter("style"))
+        styles = list(root.iter("{http://www.w3.org/2000/svg}style"))
         assert len(styles) == 1
         # Should only have one .shape rule (first occurrence)
         assert styles[0].text.count(".shape{") == 1
@@ -255,8 +255,59 @@ class TestSVGProcessor:
 
         # Should not add style element when no matching elements
         root = modified.getroot()
-        styles = list(root.iter("style"))
+        styles = list(root.iter("{http://www.w3.org/2000/svg}style"))
         assert len(styles) == 0
+
+    def test_add_css_classes_style_in_defs(self, processor: SVGProcessor, tmp_path: Path) -> None:
+        """Test that style element is inserted inside defs when it exists."""
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+    <defs>
+        <clipPath id="clip"><rect x="0" y="0" width="100" height="100"/></clipPath>
+    </defs>
+    <path d="M10,10 L40,40" fill="#ff0000"/>
+</svg>"""
+        svg_file = tmp_path / "with_defs.svg"
+        svg_file.write_text(svg_content)
+
+        options = SVGProcessingOptions(add_css=True)
+        processor = SVGProcessor(options)
+        tree = processor.load_svg(svg_file)
+        modified = processor.add_css_classes(tree)
+
+        root = modified.getroot()
+        defs = root.find("{http://www.w3.org/2000/svg}defs")
+        assert defs is not None
+
+        # Style should be first child of defs
+        assert len(defs) >= 1
+        first_child = defs[0]
+        assert first_child.tag == "{http://www.w3.org/2000/svg}style"
+        assert ".path0{fill:#ff0000;}" in first_child.text
+
+    def test_add_css_classes_style_at_top_without_defs(
+        self, processor: SVGProcessor, tmp_path: Path
+    ) -> None:
+        """Test that style element is inserted at top when no defs exists."""
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+    <path d="M10,10 L40,40" fill="#ff0000"/>
+    <circle cx="50" cy="50" r="20" fill="#00ff00"/>
+</svg>"""
+        svg_file = tmp_path / "without_defs.svg"
+        svg_file.write_text(svg_content)
+
+        options = SVGProcessingOptions(add_css=True)
+        processor = SVGProcessor(options)
+        tree = processor.load_svg(svg_file)
+        modified = processor.add_css_classes(tree)
+
+        root = modified.getroot()
+        # Style should be first child of root
+        assert len(root) >= 1
+        first_child = root[0]
+        assert first_child.tag == "{http://www.w3.org/2000/svg}style"
+        assert ".path0{fill:#ff0000;}" in first_child.text
 
     def test_get_svg_dimensions_no_root(self, processor: SVGProcessor) -> None:
         """Test get_svg_dimensions with tree that has no root."""

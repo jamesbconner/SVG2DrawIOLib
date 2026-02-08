@@ -1,4 +1,4 @@
-.PHONY: help install dev test lint format type security cov build check-dist clean all pre-commit run
+.PHONY: help install dev test lint format type security cov build check-dist clean clean-win zip all pre-commit run
 
 help: ## Show this help message
 	@echo "Available targets:"
@@ -45,6 +45,22 @@ clean: ## Clean build artifacts and caches
 	rm -rf dist build *.egg-info .pytest_cache .mypy_cache .ruff_cache htmlcov
 	find . -type d -name __pycache__ -exec rm -rf {} +
 	find . -type f -name "*.pyc" -delete
+
+clean-win: ## Clean build artifacts and caches (Windows)
+	@if exist dist rmdir /s /q dist
+	@if exist build rmdir /s /q build
+	@if exist htmlcov rmdir /s /q htmlcov
+	@if exist .coverage rmdir /s /q .coverage
+	@if exist .pytest_cache rmdir /s /q .pytest_cache
+	@if exist .mypy_cache rmdir /s /q .mypy_cache
+	@if exist .ruff_cache rmdir /s /q .ruff_cache
+	@for /d /r . %%d in (__pycache__) do @if exist "%%d" rmdir /s /q "%%d"
+	@for /d /r . %%d in (*.egg-info) do @if exist "%%d" rmdir /s /q "%%d"
+	@del /s /q *.pyc >nul 2>&1 || exit /b 0
+
+zip: ## Create a source archive respecting .gitignore
+	@git archive -o SVG2DrawIOLib-source.zip HEAD
+	@echo "Created SVG2DrawIOLib-source.zip"
 
 run: ## Run the CLI (use ARGS="..." to pass arguments)
 	SVG2DrawIOLib $(ARGS)
