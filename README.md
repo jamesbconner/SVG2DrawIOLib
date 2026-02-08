@@ -178,7 +178,7 @@ SVG2DrawIOLib converts SVG files into DrawIO's custom library format:
 3. **Encodes SVG as data URI** with base64 encoding
 4. **Wraps in mxGraphModel XML** structure
 5. **Compresses using zlib** deflate algorithm
-6. **Generates library JSON/XML** compatible with DrawIO
+6. **Generates library XML** compatible with DrawIO
 
 For technical details about the conversion process, see [ARCHITECTURE.md](ARCHITECTURE.md).
 

@@ -34,10 +34,12 @@ def remove(
     verbose: bool,
     quiet: bool,
 ) -> None:
-    """Remove icons from a DrawIO library by name.
+    """[bold cyan]Remove icons from a DrawIO library by name.[/]
 
-    Removes one or more icons from an existing library file.
+    \b
+    \nRemoves one or more icons from an existing library file.
 
+    \b
     Examples:
         Remove single icon:
         $ SVG2DrawIOLib remove my-library.xml old-icon
@@ -70,7 +72,7 @@ def remove(
             )
 
     except Exception as e:
-        logger.error(f"Error: {e}")
+        logger.error(f"Failed to remove icons: {e}")
         if verbose:
             raise
         sys.exit(1)

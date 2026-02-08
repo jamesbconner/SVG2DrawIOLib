@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] - 2026-02-08
+
+### Fixed
+
+- **Version Display**: Fixed `--version` flag to display the correct SVG2DrawIOLib version (1.1.1) instead of the rich-click library version (1.9.7). The CLI now imports and displays the version from `__about__.py`, which is the single source of truth for the package version.
+
+### Changed
+
+- **Logging Consistency**: Standardized logging styles across all CLI commands for better consistency and clarity.
+  - Updated `split-paths` command to use `setup_logging()` helper function instead of `logging.basicConfig()`, matching all other CLI commands.
+  - Made error messages more descriptive with operation context (e.g., "Failed to create library" instead of "Unexpected error").
+  - Moved logger initialization in `split-paths` from module-level to function-level for consistency with other commands.
+- **CLI Framework Consistency**: Updated `split-paths` command to use `rich_click` instead of plain `click`, matching all other CLI commands.
+- **CLI Help Text Formatting**: Reformatted docstrings for all CLI commands to provide consistent, well-structured help output with:
+  - Bold cyan command titles with rich markup
+  - Preserved formatting using literal blocks (`\b`)
+  - Structured sections (e.g., "Duplicate Handling:", "Scaling Options:", "Examples:")
+
 ## [1.1.0] - 2026-02-08
 
 ### Added

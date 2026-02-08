@@ -1,51 +1,52 @@
 """Split compound SVG paths into individual subpaths for color customization."""
 
 import logging
+import sys
 from pathlib import Path
 
-import click
+import rich_click as rc
 
+from SVG2DrawIOLib.cli.helpers import console, setup_logging
 from SVG2DrawIOLib.path_splitter import PathSplitter
 
-logger = logging.getLogger(__name__)
 
-
-@click.command(name="split-paths")
-@click.argument("input_file", type=click.Path(exists=True, path_type=Path))
-@click.option(
+@rc.command(name="split-paths")
+@rc.argument("input_file", type=rc.Path(exists=True, path_type=Path))
+@rc.option(
     "-o",
     "--output",
-    type=click.Path(path_type=Path),
+    type=rc.Path(path_type=Path),
     required=True,
     help="Output SVG file path",
 )
-@click.option(
+@rc.option(
     "-v",
     "--verbose",
     is_flag=True,
     help="Enable verbose output",
 )
 def split_paths(input_file: Path, output: Path, verbose: bool) -> None:
-    """Split compound SVG paths into individual subpaths.
+    """[bold cyan]Split compound SVG paths into individual subpaths.[/]
 
-    This command splits SVG paths that contain multiple shapes (indicated by
+    \b
+    \nThis command splits SVG paths that contain multiple shapes (indicated by
     multiple M/m commands) into separate path elements. This enables per-path
     color customization when used with DrawIO's CSS editing feature.
 
+    \b
     The command automatically detects and preserves "donut holes" (paths contained
     within other paths) to maintain cutout effects.
 
+    \b
     Example:
-
         SVG2DrawIOLib split-paths icon.svg -o icon-split.svg
 
+    \b
     The output SVG can then be used with the 'create' or 'add' commands with
     the --css flag to enable color editing in DrawIO.
     """
-    if verbose:
-        logging.basicConfig(level=logging.DEBUG)
-    else:
-        logging.basicConfig(level=logging.INFO)
+    setup_logging(verbose, quiet=False)
+    logger = logging.getLogger(__name__)
 
     logger.info(f"Splitting paths in: {input_file}")
 
@@ -56,14 +57,18 @@ def split_paths(input_file: Path, output: Path, verbose: bool) -> None:
         logger.info(f"Successfully split {result['paths_processed']} path(s)")
         logger.info(f"Created {result['subpaths_created']} subpath(s)")
         logger.info(f"Preserved {result['holes_preserved']} hole(s)")
-        logger.info(f"Output written to: {output}")
+
+        console.print(
+            f"[green]✓[/green] Split {result['paths_processed']} path(s) into "
+            f"{result['subpaths_created']} subpath(s): [cyan]{output}[/cyan]"
+        )
 
     except ImportError as e:
         logger.error(f"Missing required dependency: {e}")
         logger.error("Path splitting requires svgelements library")
-        raise click.Abort() from e
+        raise rc.Abort() from e
     except Exception as e:
-        logger.error(f"Error splitting paths: {e}")
+        logger.error(f"Failed to split paths: {e}")
         if verbose:
             raise
-        raise click.Abort() from e
+        sys.exit(1)

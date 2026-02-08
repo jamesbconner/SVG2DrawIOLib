@@ -33,11 +33,12 @@ def list(
     verbose: bool,
     quiet: bool,
 ) -> None:
-    """List all icons in a DrawIO library.
+    """[bold cyan]List all icons in a DrawIO library.[/]
 
     \b
-    Displays all icon names in the specified library file.
+    \nDisplays all icon names in the specified library file.
 
+    \b
     Example:
         List all icons:
         $ SVG2DrawIOLib list my-library.xml
@@ -69,7 +70,7 @@ def list(
         console.print(f"\n[green]Total:[/green] {len(icon_names)} icon(s)")
 
     except Exception as e:
-        logger.error(f"Error: {e}")
+        logger.error(f"Failed to list icons: {e}")
         if verbose:
             raise
         sys.exit(1)
