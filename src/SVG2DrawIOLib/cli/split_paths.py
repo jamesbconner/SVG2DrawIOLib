@@ -4,22 +4,22 @@ import logging
 import sys
 from pathlib import Path
 
-import click
+import rich_click as rc
 
-from SVG2DrawIOLib.cli.helpers import setup_logging
+from SVG2DrawIOLib.cli.helpers import console, setup_logging
 from SVG2DrawIOLib.path_splitter import PathSplitter
 
 
-@click.command(name="split-paths")
-@click.argument("input_file", type=click.Path(exists=True, path_type=Path))
-@click.option(
+@rc.command(name="split-paths")
+@rc.argument("input_file", type=rc.Path(exists=True, path_type=Path))
+@rc.option(
     "-o",
     "--output",
-    type=click.Path(path_type=Path),
+    type=rc.Path(path_type=Path),
     required=True,
     help="Output SVG file path",
 )
-@click.option(
+@rc.option(
     "-v",
     "--verbose",
     is_flag=True,
@@ -54,12 +54,16 @@ def split_paths(input_file: Path, output: Path, verbose: bool) -> None:
         logger.info(f"Successfully split {result['paths_processed']} path(s)")
         logger.info(f"Created {result['subpaths_created']} subpath(s)")
         logger.info(f"Preserved {result['holes_preserved']} hole(s)")
-        logger.info(f"Output written to: {output}")
+
+        console.print(
+            f"[green]✓[/green] Split {result['paths_processed']} path(s) into "
+            f"{result['subpaths_created']} subpath(s): [cyan]{output}[/cyan]"
+        )
 
     except ImportError as e:
         logger.error(f"Missing required dependency: {e}")
         logger.error("Path splitting requires svgelements library")
-        raise click.Abort() from e
+        raise rc.Abort() from e
     except Exception as e:
         logger.error(f"Failed to split paths: {e}")
         if verbose:
