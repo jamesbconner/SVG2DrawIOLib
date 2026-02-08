@@ -76,7 +76,8 @@ class TestExtractCommand:
 
         # Extract specific icons
         result = runner.invoke(
-            cli, ["extract", "-l", str(library), "-o", str(output_dir), "-i", "icon1", "-i", "icon3"]
+            cli,
+            ["extract", "-l", str(library), "-o", str(output_dir), "-i", "icon1", "-i", "icon3"],
         )
         assert result.exit_code == 0
         assert "Extracted 2 icon(s)" in result.output
@@ -212,9 +213,7 @@ class TestExtractCommand:
         assert result.exit_code == 0
 
         # Extract with verbose
-        result = runner.invoke(
-            cli, ["extract", "-l", str(library), "-o", str(output_dir), "-v"]
-        )
+        result = runner.invoke(cli, ["extract", "-l", str(library), "-o", str(output_dir), "-v"])
         assert result.exit_code == 0
 
 
@@ -376,9 +375,7 @@ class TestRenameCommand:
         assert result.exit_code == 0
 
         # Try to rename
-        result = runner.invoke(
-            cli, ["rename", "-l", str(library), "-o", "icon1", "-n", "icon2"]
-        )
+        result = runner.invoke(cli, ["rename", "-l", str(library), "-o", "icon1", "-n", "icon2"])
         assert result.exit_code != 0
         assert "Library is empty" in result.output
 
@@ -422,14 +419,10 @@ class TestRenameCommand:
         library.write_text("This is not valid XML at all!")
 
         # Try to rename - should fail gracefully
-        result = runner.invoke(
-            cli, ["rename", "-l", str(library), "-o", "icon1", "-n", "icon2"]
-        )
+        result = runner.invoke(cli, ["rename", "-l", str(library), "-o", "icon1", "-n", "icon2"])
         assert result.exit_code != 0
 
-    def test_extract_corrupted_library_verbose(
-        self, runner: CliRunner, tmp_path: Path
-    ) -> None:
+    def test_extract_corrupted_library_verbose(self, runner: CliRunner, tmp_path: Path) -> None:
         """Test extract with corrupted library data in verbose mode."""
         library = tmp_path / "corrupted.xml"
         output_dir = tmp_path / "extracted"
@@ -440,9 +433,7 @@ class TestRenameCommand:
         library.write_text(corrupted_xml)
 
         # Try to extract with verbose - should raise exception
-        result = runner.invoke(
-            cli, ["extract", "-l", str(library), "-o", str(output_dir), "-v"]
-        )
+        result = runner.invoke(cli, ["extract", "-l", str(library), "-o", str(output_dir), "-v"])
         assert result.exit_code != 0
 
     def test_rename_corrupted_library_verbose(self, runner: CliRunner, tmp_path: Path) -> None:

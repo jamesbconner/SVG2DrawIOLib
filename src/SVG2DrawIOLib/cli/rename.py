@@ -120,9 +120,7 @@ def rename(
                 break
 
         if icon_to_rename is None:
-            console.print(
-                f"[red]Error:[/red] Icon '{old_name}' not found in library", style="bold"
-            )
+            console.print(f"[red]Error:[/red] Icon '{old_name}' not found in library", style="bold")
             raise rc.ClickException(f"Icon '{old_name}' not found in library")
 
         # Check if new name already exists

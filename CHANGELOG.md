@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **List Command Table Width**: Fixed table width calculation in `list` command to prevent title text wrapping. The table now properly sizes to accommodate whichever is wider: the title text, column header, or icon names. This ensures clean, readable output regardless of filename or icon name length.
+
 ## [1.1.2] - 2026-02-08
 
 ### Fixed
