@@ -1,12 +1,14 @@
 """Library validator - Validates DrawIO library files for correctness and integrity."""
 
 import base64
+import binascii
 import json
 import logging
 import re
 import xml.etree.ElementTree as ET
 import zlib
 from pathlib import Path
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +16,7 @@ logger = logging.getLogger(__name__)
 class LibraryValidator:
     """Validates DrawIO library files."""
 
-    def validate(self, library_path: Path) -> dict:
+    def validate(self, library_path: Path) -> dict[str, Any]:
         """Perform comprehensive validation of a DrawIO library file.
 
         Args:
@@ -28,7 +30,7 @@ class LibraryValidator:
                 - checks: dict with validation check results
                 - icon_issues: list of icon-specific issues
         """
-        results = {
+        results: dict[str, Any] = {
             "valid": True,
             "errors": [],
             "warnings": [],
@@ -113,7 +115,7 @@ class LibraryValidator:
 
         return results
 
-    def _validate_icon(self, item: dict, icon_name: str) -> list[dict]:
+    def _validate_icon(self, item: dict[str, Any], icon_name: str) -> list[dict[str, str]]:
         """Validate a single icon entry.
 
         Args:
@@ -129,11 +131,13 @@ class LibraryValidator:
         required_fields = ["xml", "w", "h", "title"]
         for field in required_fields:
             if field not in item:
-                issues.append({
-                    "severity": "error",
-                    "icon": icon_name,
-                    "message": f"Missing required field: {field}",
-                })
+                issues.append(
+                    {
+                        "severity": "error",
+                        "icon": icon_name,
+                        "message": f"Missing required field: {field}",
+                    }
+                )
                 return issues  # Can't continue without required fields
 
         # Validate dimensions
@@ -141,96 +145,115 @@ class LibraryValidator:
             width = float(item["w"])
             height = float(item["h"])
             if width <= 0 or height <= 0:
-                issues.append({
+                issues.append(
+                    {
+                        "severity": "error",
+                        "icon": icon_name,
+                        "message": f"Invalid dimensions: {width}x{height} (must be positive)",
+                    }
+                )
+        except (ValueError, TypeError) as e:
+            issues.append(
+                {
                     "severity": "error",
                     "icon": icon_name,
-                    "message": f"Invalid dimensions: {width}x{height} (must be positive)",
-                })
-        except (ValueError, TypeError) as e:
-            issues.append({
-                "severity": "error",
-                "icon": icon_name,
-                "message": f"Invalid dimension values: {e}",
-            })
+                    "message": f"Invalid dimension values: {e}",
+                }
+            )
 
         # Validate XML data (base64 encoded, compressed mxGraphModel)
         try:
             xml_data = item["xml"]
             if not isinstance(xml_data, str):
-                issues.append({
-                    "severity": "error",
-                    "icon": icon_name,
-                    "message": "XML data is not a string",
-                })
+                issues.append(
+                    {
+                        "severity": "error",
+                        "icon": icon_name,
+                        "message": "XML data is not a string",
+                    }
+                )
                 return issues
 
             # Try to decode base64
             try:
                 compressed = base64.b64decode(xml_data)
             except Exception as e:
-                issues.append({
-                    "severity": "error",
-                    "icon": icon_name,
-                    "message": f"Failed to decode base64: {e}",
-                })
+                issues.append(
+                    {
+                        "severity": "error",
+                        "icon": icon_name,
+                        "message": f"Failed to decode base64: {e}",
+                    }
+                )
                 return issues
 
             # Try to decompress
             try:
                 decompressed = zlib.decompress(compressed, wbits=-15)
             except zlib.error as e:
-                issues.append({
-                    "severity": "error",
-                    "icon": icon_name,
-                    "message": f"Failed to decompress data: {e}",
-                })
+                issues.append(
+                    {
+                        "severity": "error",
+                        "icon": icon_name,
+                        "message": f"Failed to decompress data: {e}",
+                    }
+                )
                 return issues
 
             # Try to parse mxGraphModel XML
             try:
                 root = ET.fromstring(decompressed)  # nosec B314
                 if root.tag != "mxGraphModel":
-                    issues.append({
+                    issues.append(
+                        {
+                            "severity": "error",
+                            "icon": icon_name,
+                            "message": f"Invalid mxGraphModel root: expected 'mxGraphModel', got '{root.tag}'",
+                        }
+                    )
+            except ET.ParseError as e:
+                issues.append(
+                    {
                         "severity": "error",
                         "icon": icon_name,
-                        "message": f"Invalid mxGraphModel root: expected 'mxGraphModel', got '{root.tag}'",
-                    })
-            except ET.ParseError as e:
-                issues.append({
-                    "severity": "error",
-                    "icon": icon_name,
-                    "message": f"Failed to parse mxGraphModel XML: {e}",
-                })
+                        "message": f"Failed to parse mxGraphModel XML: {e}",
+                    }
+                )
                 return issues
 
             # Try to recompress to verify round-trip
             try:
                 co = zlib.compressobj(level=9, wbits=-15)
-                recompressed = co.compress(decompressed) + co.flush()
-                reencoded = base64.b64encode(recompressed).decode("utf-8")
+                _ = co.compress(decompressed) + co.flush()
                 # Note: Recompressed data may differ slightly due to compression settings
                 logger.debug(f"Icon '{icon_name}': round-trip compression successful")
             except Exception as e:
-                issues.append({
-                    "severity": "warning",
-                    "icon": icon_name,
-                    "message": f"Failed to recompress data: {e}",
-                })
+                issues.append(
+                    {
+                        "severity": "warning",
+                        "icon": icon_name,
+                        "message": f"Failed to recompress data: {e}",
+                    }
+                )
 
             # Extract and validate SVG content
             svg_issues = self._validate_svg_content(root, icon_name)
             issues.extend(svg_issues)
 
         except Exception as e:
-            issues.append({
-                "severity": "error",
-                "icon": icon_name,
-                "message": f"Unexpected error validating icon: {e}",
-            })
+            issues.append(
+                {
+                    "severity": "error",
+                    "icon": icon_name,
+                    "message": f"Unexpected error validating icon: {e}",
+                }
+            )
 
         return issues
 
-    def _validate_svg_content(self, mxgraph_root: ET.Element, icon_name: str) -> list[dict]:
+    def _validate_svg_content(
+        self, mxgraph_root: ET.Element, icon_name: str
+    ) -> list[dict[str, str]]:
         """Validate SVG content within mxGraphModel.
 
         Args:
@@ -254,11 +277,13 @@ class LibraryValidator:
                     # Extract SVG data URI
                     match = re.search(r"image=data:image/svg\+xml,([^;]+)", style)
                     if not match:
-                        issues.append({
-                            "severity": "warning",
-                            "icon": icon_name,
-                            "message": "SVG data URI found but could not extract content",
-                        })
+                        issues.append(
+                            {
+                                "severity": "warning",
+                                "icon": icon_name,
+                                "message": "SVG data URI found but could not extract content",
+                            }
+                        )
                         continue
 
                     try:
@@ -271,11 +296,13 @@ class LibraryValidator:
 
                         # Check for SVG namespace
                         if not svg_root.tag.endswith("svg"):
-                            issues.append({
-                                "severity": "warning",
-                                "icon": icon_name,
-                                "message": f"Unexpected SVG root element: {svg_root.tag}",
-                            })
+                            issues.append(
+                                {
+                                    "severity": "warning",
+                                    "icon": icon_name,
+                                    "message": f"Unexpected SVG root element: {svg_root.tag}",
+                                }
+                            )
 
                         # Check for viewBox or dimensions
                         has_viewbox = svg_root.get("viewBox") is not None
@@ -283,53 +310,67 @@ class LibraryValidator:
                         has_height = svg_root.get("height") is not None
 
                         if not has_viewbox and not (has_width and has_height):
-                            issues.append({
-                                "severity": "warning",
-                                "icon": icon_name,
-                                "message": "SVG missing viewBox and dimensions",
-                            })
+                            issues.append(
+                                {
+                                    "severity": "warning",
+                                    "icon": icon_name,
+                                    "message": "SVG missing viewBox and dimensions",
+                                }
+                            )
 
                         # Check for empty SVG
                         if len(list(svg_root)) == 0:
-                            issues.append({
-                                "severity": "warning",
-                                "icon": icon_name,
-                                "message": "SVG appears to be empty (no child elements)",
-                            })
+                            issues.append(
+                                {
+                                    "severity": "warning",
+                                    "icon": icon_name,
+                                    "message": "SVG appears to be empty (no child elements)",
+                                }
+                            )
 
                         logger.debug(f"Icon '{icon_name}': SVG content validated")
 
-                    except base64.binascii.Error as e:
-                        issues.append({
-                            "severity": "error",
-                            "icon": icon_name,
-                            "message": f"Failed to decode SVG base64: {e}",
-                        })
+                    except binascii.Error as e:
+                        issues.append(
+                            {
+                                "severity": "error",
+                                "icon": icon_name,
+                                "message": f"Failed to decode SVG base64: {e}",
+                            }
+                        )
                     except ET.ParseError as e:
-                        issues.append({
-                            "severity": "error",
-                            "icon": icon_name,
-                            "message": f"Failed to parse SVG XML: {e}",
-                        })
+                        issues.append(
+                            {
+                                "severity": "error",
+                                "icon": icon_name,
+                                "message": f"Failed to parse SVG XML: {e}",
+                            }
+                        )
                     except UnicodeDecodeError as e:
-                        issues.append({
-                            "severity": "error",
-                            "icon": icon_name,
-                            "message": f"Failed to decode SVG UTF-8: {e}",
-                        })
+                        issues.append(
+                            {
+                                "severity": "error",
+                                "icon": icon_name,
+                                "message": f"Failed to decode SVG UTF-8: {e}",
+                            }
+                        )
 
             if not svg_found:
-                issues.append({
-                    "severity": "warning",
-                    "icon": icon_name,
-                    "message": "No SVG data URI found in mxGraphModel",
-                })
+                issues.append(
+                    {
+                        "severity": "warning",
+                        "icon": icon_name,
+                        "message": "No SVG data URI found in mxGraphModel",
+                    }
+                )
 
         except Exception as e:
-            issues.append({
-                "severity": "warning",
-                "icon": icon_name,
-                "message": f"Unexpected error validating SVG: {e}",
-            })
+            issues.append(
+                {
+                    "severity": "warning",
+                    "icon": icon_name,
+                    "message": f"Unexpected error validating SVG: {e}",
+                }
+            )
 
         return issues

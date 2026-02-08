@@ -93,19 +93,11 @@ def _display_validation_results(results: dict, library_path: Path) -> None:
     table.add_column("Details", style="dim")
 
     # XML structure
-    status = (
-        "[green]✓ Pass[/green]"
-        if results["checks"]["xml_structure"]
-        else "[red]✗ Fail[/red]"
-    )
+    status = "[green]✓ Pass[/green]" if results["checks"]["xml_structure"] else "[red]✗ Fail[/red]"
     table.add_row("XML Structure", status, "Valid mxlibrary format")
 
     # JSON format
-    status = (
-        "[green]✓ Pass[/green]"
-        if results["checks"]["json_format"]
-        else "[red]✗ Fail[/red]"
-    )
+    status = "[green]✓ Pass[/green]" if results["checks"]["json_format"] else "[red]✗ Fail[/red]"
     table.add_row("JSON Format", status, "Valid JSON array")
 
     # Icon validation
