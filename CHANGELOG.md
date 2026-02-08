@@ -23,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Multi-Class CSS Selectors**: Fixed CSS selector generation for elements with multiple space-separated classes. Now uses only the first class for the selector instead of creating invalid descendant selectors.
 - **Duplicate CSS Selectors**: Fixed duplicate CSS selector generation when multiple elements share the same class. Now only generates one CSS rule per unique class, using the first occurrence's fill color.
 - **Duplicate ID Attributes**: Fixed path splitting to create unique IDs (`originalid-0`, `originalid-1`, etc.) when the original path has an `id` attribute, preventing SVG/XML validation errors.
+- **Whitespace-Only Class Attribute**: Fixed IndexError when an SVG element has a class attribute containing only whitespace. Now properly handles empty/whitespace-only class attributes by generating a new class name.
+- **Class Name Collision in Path Splitting**: Fixed duplicate class names when splitting multiple compound paths. Now uses a global counter to ensure all split paths get unique class names (path0, path1, path2, etc.) instead of resetting the counter for each compound path.
 
 ### Changed
 

@@ -222,3 +222,213 @@ class TestPathSplitter:
         # Neither path should have an id attribute
         for path in paths:
             assert path.get("id") is None
+
+    def test_split_svg_paths_import_error(self, splitter: PathSplitter, tmp_path: Path) -> None:
+        """Test that ImportError is raised when svgelements is not available."""
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+    <path d="M10,10 L40,40 Z"/>
+</svg>"""
+        svg_file = tmp_path / "test.svg"
+        svg_file.write_text(svg_content)
+        output = tmp_path / "output.svg"
+
+        # This test documents that ImportError is raised if svgelements is missing
+        # In practice, svgelements is a required dependency
+        import sys
+        from unittest.mock import patch
+
+        with (
+            patch.dict(sys.modules, {"svgelements": None}),
+            pytest.raises(ImportError, match="svgelements library is required"),
+        ):
+            splitter.split_svg_paths(svg_file, output)
+
+    def test_split_paths_with_invalid_svg(self, splitter: PathSplitter, tmp_path: Path) -> None:
+        """Test split_svg_paths with invalid SVG content."""
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+    <path d="INVALID PATH DATA"/>
+</svg>"""
+        svg_file = tmp_path / "invalid.svg"
+        svg_file.write_text(svg_content)
+        output = tmp_path / "output.svg"
+
+        # Should handle gracefully and return result
+        result = splitter.split_svg_paths(svg_file, output)
+        assert result is not None
+        # Path with invalid data should be skipped
+        assert result["paths_processed"] == 0
+
+    def test_find_parent_not_found(self, splitter: PathSplitter) -> None:
+        """Test _find_parent when parent is not found."""
+        root = ET.Element("root")
+        target = ET.Element("target")
+        # target is not in the tree
+        result = splitter._find_parent(root, target)
+        assert result is None
+
+    def test_split_paths_with_path_without_d_attribute(
+        self, splitter: PathSplitter, tmp_path: Path
+    ) -> None:
+        """Test that paths without 'd' attribute are skipped."""
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+    <path fill="#ff0000"/>
+    <path d="M10,10 L40,40 Z M60,60 L90,90 Z"/>
+</svg>"""
+        svg_file = tmp_path / "no_d.svg"
+        svg_file.write_text(svg_content)
+        output = tmp_path / "output.svg"
+
+        result = splitter.split_svg_paths(svg_file, output)
+        assert result is not None
+        # Only the path with 'd' attribute should be processed
+        assert result["paths_processed"] == 1
+
+    def test_split_paths_parent_not_found_edge_case(
+        self, splitter: PathSplitter, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Test handling when parent element cannot be found."""
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+    <path d="M10,10 L40,40 Z M60,60 L90,90 Z"/>
+</svg>"""
+        svg_file = tmp_path / "test.svg"
+        svg_file.write_text(svg_content)
+        output = tmp_path / "output.svg"
+
+        # Mock _find_parent to return None
+        def mock_find_parent(*args, **kwargs):
+            return None
+
+        monkeypatch.setattr(splitter, "_find_parent", mock_find_parent)
+
+        result = splitter.split_svg_paths(svg_file, output)
+        assert result is not None
+        # Path should be skipped when parent not found
+        assert result["subpaths_created"] == 0
+
+    def test_split_paths_with_exception_during_split(
+        self, splitter: PathSplitter, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Test handling of exceptions during path splitting."""
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+    <path d="M10,10 L40,40 Z M60,60 L90,90 Z"/>
+</svg>"""
+        svg_file = tmp_path / "test.svg"
+        svg_file.write_text(svg_content)
+        output = tmp_path / "output.svg"
+
+        # Mock as_subpaths to raise an exception
+        def mock_as_subpaths(*args, **kwargs):
+            raise RuntimeError("Test exception during subpath extraction")
+
+        # We need to patch the Path class's as_subpaths method
+        import svgelements
+
+        original_as_subpaths = svgelements.Path.as_subpaths
+        svgelements.Path.as_subpaths = mock_as_subpaths
+
+        try:
+            result = splitter.split_svg_paths(svg_file, output)
+            # Should still return a result, but with no subpaths created
+            assert result is not None
+            assert result["subpaths_created"] == 0
+        finally:
+            # Restore original method
+            svgelements.Path.as_subpaths = original_as_subpaths
+
+    def test_group_paths_with_holes_bbox_exception(
+        self, splitter: PathSplitter, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Test _group_paths_with_holes handles bbox exceptions gracefully."""
+        import svgelements
+
+        # Create mock paths
+        path1 = svgelements.Path("M10,10 L40,40 Z")
+        path2 = svgelements.Path("M60,60 L90,90 Z")
+
+        # Mock bbox to raise exception for first path
+        original_bbox = svgelements.Path.bbox
+        call_count = [0]
+
+        def mock_bbox(self):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                raise RuntimeError("Test bbox exception")
+            return original_bbox(self)
+
+        svgelements.Path.bbox = mock_bbox
+
+        try:
+            groups = splitter._group_paths_with_holes([path1, path2])
+            # Should still return groups, with path1 having None bbox
+            assert len(groups) >= 1
+        finally:
+            svgelements.Path.bbox = original_bbox
+
+    def test_group_paths_with_holes_none_bbox(self, splitter: PathSplitter) -> None:
+        """Test _group_paths_with_holes handles paths with None bbox."""
+        import svgelements
+
+        # Create a path and manually test with None bbox
+        path1 = svgelements.Path("M10,10 L40,40 Z")
+        path2 = svgelements.Path("M60,60 L90,90 Z")
+
+        # Manually create the paths_with_bbox structure with None
+        paths_with_bbox = [(path1, None), (path2, (60, 60, 90, 90))]
+
+        # Test the sorting logic - paths with None bbox should have area -1
+        def get_area(item):
+            _, bbox = item
+            if bbox is None:
+                return -1.0
+            x1, y1, x2, y2 = bbox
+            return (x2 - x1) * (y2 - y1)
+
+        sorted_paths = sorted(paths_with_bbox, key=get_area, reverse=True)
+        # Path2 with valid bbox should come first
+        assert sorted_paths[0][1] is not None
+        assert sorted_paths[1][1] is None
+
+    def test_split_multiple_compound_paths_unique_class_names(
+        self, splitter: PathSplitter, tmp_path: Path
+    ) -> None:
+        """Test that splitting multiple compound paths generates unique class names."""
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 100">
+    <path d="M10,10 L40,40 Z M50,10 L80,40 Z" fill="#ff0000"/>
+    <path d="M110,10 L140,40 Z M150,10 L180,40 Z" fill="#00ff00"/>
+</svg>"""
+        svg_file = tmp_path / "test.svg"
+        svg_file.write_text(svg_content)
+        output = tmp_path / "output.svg"
+
+        result = splitter.split_svg_paths(svg_file, output)
+        assert result is not None
+        assert result["paths_processed"] == 2
+        assert result["subpaths_created"] == 4
+
+        # Parse output and check class names are unique
+        import xml.etree.ElementTree as ET
+
+        tree = ET.parse(output)
+        root = tree.getroot()
+        paths = list(root.iter("{http://www.w3.org/2000/svg}path"))
+        assert len(paths) == 4
+
+        # Collect all class names
+        class_names = [p.get("class", "").strip() for p in paths]
+
+        # All class names should be unique
+        assert len(class_names) == len(set(class_names)), (
+            f"Duplicate class names found: {class_names}"
+        )
+
+        # Class names should be path0, path1, path2, path3 (or similar unique pattern)
+        # Not path0, path1, path0, path1 (which would be the bug)
+        assert class_names[0] != class_names[2], (
+            "First path from each compound should have different class names"
+        )

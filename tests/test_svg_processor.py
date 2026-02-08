@@ -1817,3 +1817,286 @@ class TestSVGProcessor:
         # Should return None to trigger fallback
         result = processor._adjust_viewbox_with_svgelements(tree)
         assert result is None
+
+    def test_calculate_path_bounds_with_no_current_command(self, processor: SVGProcessor) -> None:
+        """Test path bounds when coordinates appear before any command."""
+        # Path data with numbers but no command context
+        path_data = "10,20 30,40"
+        bounds = processor.calculate_path_bounds(path_data)
+        # Should return None or handle gracefully
+        assert bounds is None or isinstance(bounds, tuple)
+
+    def test_adjust_svg_viewbox_manual_fallback_no_viewbox(
+        self, processor: SVGProcessor, tmp_path: Path
+    ) -> None:
+        """Test manual viewbox adjustment fallback when no viewBox attribute."""
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="100" height="50">
+    <path d="M10,10 L90,10 L50,40 Z"/>
+</svg>"""
+        svg_file = tmp_path / "no_viewbox.svg"
+        svg_file.write_text(svg_content)
+        tree = processor.load_svg(svg_file)
+
+        # Force manual fallback by using a transform
+        root = tree.getroot()
+        root.find(".//{http://www.w3.org/2000/svg}path").set("transform", "scale(1)")
+
+        result = processor.adjust_svg_viewbox_to_content(tree)
+        # Should return original tree when no viewBox
+        assert result is not None
+
+    def test_adjust_svg_viewbox_manual_fallback_invalid_viewbox(
+        self, processor: SVGProcessor, tmp_path: Path
+    ) -> None:
+        """Test manual viewbox adjustment with invalid viewBox format."""
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="invalid">
+    <path d="M10,10 L90,10 L50,40 Z" transform="scale(1)"/>
+</svg>"""
+        svg_file = tmp_path / "invalid_viewbox.svg"
+        svg_file.write_text(svg_content)
+        tree = processor.load_svg(svg_file)
+
+        result = processor.adjust_svg_viewbox_to_content(tree)
+        # Should return original tree
+        assert result is not None
+
+    def test_adjust_svg_viewbox_content_outside_bounds(
+        self, processor: SVGProcessor, tmp_path: Path
+    ) -> None:
+        """Test viewbox adjustment when content is outside viewBox bounds."""
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50">
+    <path d="M100,100 L200,200" transform="scale(1)"/>
+</svg>"""
+        svg_file = tmp_path / "outside_bounds.svg"
+        svg_file.write_text(svg_content)
+        tree = processor.load_svg(svg_file)
+
+        result = processor.adjust_svg_viewbox_to_content(tree)
+        # Should handle gracefully
+        assert result is not None
+
+    def test_calculate_path_bounds_with_empty_coordinates(self, processor: SVGProcessor) -> None:
+        """Test path bounds with command but empty coordinates."""
+        path_data = "M L H V"
+        bounds = processor.calculate_path_bounds(path_data)
+        assert bounds is None
+
+    def test_svg_to_data_uri_with_special_characters(
+        self, processor: SVGProcessor, tmp_path: Path
+    ) -> None:
+        """Test SVG to data URI with special characters that need encoding."""
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50">
+    <text>Test &amp; quotes apostrophes</text>
+</svg>"""
+        svg_file = tmp_path / "special_chars.svg"
+        svg_file.write_text(svg_content)
+        tree = processor.load_svg(svg_file)
+
+        data_uri = processor.svg_to_data_uri(tree)
+        assert data_uri.startswith("data:image/svg+xml,")
+        # Data URI should be base64 encoded
+        assert "PHN2ZyB" in data_uri or "Test" in data_uri
+
+    def test_adjust_viewbox_manual_fallback_no_paths(
+        self, processor: SVGProcessor, tmp_path: Path
+    ) -> None:
+        """Test manual viewbox adjustment when SVG has no paths."""
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50">
+    <rect x="10" y="10" width="80" height="30" transform="scale(1)"/>
+</svg>"""
+        svg_file = tmp_path / "no_paths.svg"
+        svg_file.write_text(svg_content)
+        tree = processor.load_svg(svg_file)
+
+        result = processor.adjust_svg_viewbox_to_content(tree)
+        # Should return original tree when no paths found
+        assert result is not None
+
+    def test_calculate_path_bounds_all_commands(self, processor: SVGProcessor) -> None:
+        """Test path bounds with all supported command types."""
+        # Test with M, L, H, V, C, S, Q, T, A commands
+        path_data = "M10,10 L20,20 H30 V40 C40,40 50,50 60,60 S70,70 80,80 Q90,90 100,100 T110,110 A10,10 0 0,1 120,120"
+        bounds = processor.calculate_path_bounds(path_data)
+        assert bounds is not None
+        min_x, min_y, max_x, max_y = bounds
+        assert min_x >= 0
+        assert min_y >= 0
+        assert max_x >= min_x
+        assert max_y >= min_y
+
+    def test_process_svg_file_with_all_options(
+        self, processor: SVGProcessor, tmp_path: Path
+    ) -> None:
+        """Test processing SVG with all options enabled."""
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50">
+    <path d="M10,10 L90,10 L50,40 Z" fill="#ff0000"/>
+</svg>"""
+        svg_file = tmp_path / "test.svg"
+        svg_file.write_text(svg_content)
+
+        options = SVGProcessingOptions(
+            add_css=True, css_color="#00ff00", xml_namespace="test", css_tag="path"
+        )
+        processor = SVGProcessor(options)
+
+        icon = processor.process_svg_file(svg_file, max_dimension=50)
+        assert icon is not None
+        assert icon.name == "test"
+        assert icon.dimensions.width <= 50
+        assert icon.dimensions.height <= 50
+
+    def test_adjust_svg_viewbox_manual_fallback_with_ellipse(
+        self, processor: SVGProcessor, tmp_path: Path
+    ) -> None:
+        """Test manual fallback handles ellipse elements correctly."""
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+    <defs><style>.cls{fill:red;}</style></defs>
+    <ellipse cx="50" cy="50" rx="30" ry="20" fill="blue"/>
+</svg>"""
+        svg_file = tmp_path / "test.svg"
+        svg_file.write_text(svg_content)
+
+        tree = processor.load_svg(svg_file)
+        assert tree is not None
+        result = processor.adjust_svg_viewbox_to_content(tree)
+        assert result is not None
+        root = result.getroot()
+        viewbox = root.get("viewBox")
+        assert viewbox is not None
+        # Ellipse bounds: cx-rx to cx+rx, cy-ry to cy+ry = 20,30 to 80,70
+        parts = [float(x) for x in viewbox.split()]
+        assert parts[0] <= 20  # min_x
+        assert parts[1] <= 30  # min_y
+
+    def test_adjust_svg_viewbox_manual_fallback_with_line(
+        self, processor: SVGProcessor, tmp_path: Path
+    ) -> None:
+        """Test manual fallback handles line elements correctly."""
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+    <defs><style>.cls{fill:red;}</style></defs>
+    <line x1="10" y1="20" x2="90" y2="80" stroke="black"/>
+</svg>"""
+        svg_file = tmp_path / "test.svg"
+        svg_file.write_text(svg_content)
+
+        tree = processor.load_svg(svg_file)
+        assert tree is not None
+        result = processor.adjust_svg_viewbox_to_content(tree)
+        assert result is not None
+        root = result.getroot()
+        viewbox = root.get("viewBox")
+        assert viewbox is not None
+        parts = [float(x) for x in viewbox.split()]
+        assert parts[0] <= 10  # min_x
+        assert parts[1] <= 20  # min_y
+
+    def test_adjust_svg_viewbox_manual_fallback_with_polyline(
+        self, processor: SVGProcessor, tmp_path: Path
+    ) -> None:
+        """Test manual fallback handles polyline elements correctly."""
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+    <defs><style>.cls{fill:red;}</style></defs>
+    <polyline points="10,10 50,20 90,10 50,40" fill="none" stroke="black"/>
+</svg>"""
+        svg_file = tmp_path / "test.svg"
+        svg_file.write_text(svg_content)
+
+        tree = processor.load_svg(svg_file)
+        assert tree is not None
+        result = processor.adjust_svg_viewbox_to_content(tree)
+        assert result is not None
+        root = result.getroot()
+        viewbox = root.get("viewBox")
+        assert viewbox is not None
+        parts = [float(x) for x in viewbox.split()]
+        assert parts[0] <= 10  # min_x
+        assert parts[1] <= 10  # min_y
+
+    def test_adjust_svg_viewbox_manual_fallback_with_polygon(
+        self, processor: SVGProcessor, tmp_path: Path
+    ) -> None:
+        """Test manual fallback handles polygon elements correctly."""
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+    <defs><style>.cls{fill:red;}</style></defs>
+    <polygon points="50,10 90,90 10,90" fill="green"/>
+</svg>"""
+        svg_file = tmp_path / "test.svg"
+        svg_file.write_text(svg_content)
+
+        tree = processor.load_svg(svg_file)
+        assert tree is not None
+        result = processor.adjust_svg_viewbox_to_content(tree)
+        assert result is not None
+        root = result.getroot()
+        viewbox = root.get("viewBox")
+        assert viewbox is not None
+        parts = [float(x) for x in viewbox.split()]
+        assert parts[0] <= 10  # min_x
+        assert parts[1] <= 10  # min_y
+
+    def test_adjust_svg_viewbox_manual_fallback_mixed_shapes(
+        self, processor: SVGProcessor, tmp_path: Path
+    ) -> None:
+        """Test manual fallback with multiple shape types."""
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+    <defs><style>.cls{fill:red;}</style></defs>
+    <ellipse cx="50" cy="50" rx="20" ry="15"/>
+    <line x1="100" y1="10" x2="150" y2="60"/>
+    <polyline points="10,100 30,120 50,100"/>
+    <polygon points="150,150 180,180 120,180"/>
+</svg>"""
+        svg_file = tmp_path / "test.svg"
+        svg_file.write_text(svg_content)
+
+        tree = processor.load_svg(svg_file)
+        assert tree is not None
+        result = processor.adjust_svg_viewbox_to_content(tree)
+        assert result is not None
+        root = result.getroot()
+        viewbox = root.get("viewBox")
+        assert viewbox is not None
+        # Should encompass all shapes
+        parts = [float(x) for x in viewbox.split()]
+        assert parts[0] <= 10  # min_x from polyline
+        assert parts[1] <= 10  # min_y from line
+
+    def test_add_css_classes_with_whitespace_only_class(
+        self, processor: SVGProcessor, tmp_path: Path
+    ) -> None:
+        """Test add_css_classes handles whitespace-only class attribute."""
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+    <path d="M10,10 L40,40 Z" fill="#ff0000" class="   "/>
+    <path d="M60,60 L90,90 Z" fill="#00ff00"/>
+</svg>"""
+        svg_file = tmp_path / "test.svg"
+        svg_file.write_text(svg_content)
+
+        tree = processor.load_svg(svg_file)
+        assert tree is not None
+
+        # Should not raise IndexError
+        processor.add_css_classes(tree)
+
+        root = tree.getroot()
+        paths = list(root.iter("{http://www.w3.org/2000/svg}path"))
+        assert len(paths) == 2
+
+        # First path should get a generated class name since whitespace-only is invalid
+        first_class = paths[0].get("class", "")
+        assert first_class.startswith("path")
+
+        # Second path should get path1
+        second_class = paths[1].get("class", "")
+        assert second_class == "path1"

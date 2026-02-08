@@ -41,6 +41,7 @@ class PathSplitter:
         paths_processed = 0
         subpaths_created = 0
         holes_preserved = 0
+        global_path_counter = 0  # Global counter for unique class names
 
         # Find all path elements
         namespace = {"svg": "http://www.w3.org/2000/svg"}
@@ -114,10 +115,11 @@ class PathSplitter:
                     if original_id:
                         new_path.set("id", f"{original_id}-{group_idx}")
 
-                    # Add CSS class for color control
+                    # Add CSS class for color control using global counter
                     existing_class = new_path.get("class", "")
-                    new_class = f"{existing_class} path{group_idx}".strip()
+                    new_class = f"{existing_class} path{global_path_counter}".strip()
                     new_path.set("class", new_class)
+                    global_path_counter += 1
 
                     parent.insert(index + group_idx, new_path)
                     subpaths_created += 1

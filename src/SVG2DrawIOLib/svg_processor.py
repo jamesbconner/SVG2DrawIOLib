@@ -86,9 +86,10 @@ class SVGProcessor:
         for index, element in enumerate(root.iter(tag)):
             # Preserve existing class if present, otherwise create new one
             existing_class = element.get("class", "")
-            if existing_class:
+            class_parts = existing_class.strip().split()
+            if class_parts:
                 # Use the first class for CSS selector (handles multi-class case)
-                class_name = existing_class.strip().split()[0]
+                class_name = class_parts[0]
             else:
                 class_name = f"path{index}"
                 element.set("class", class_name)

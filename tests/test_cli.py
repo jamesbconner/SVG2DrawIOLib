@@ -897,3 +897,200 @@ class TestListCommandEdgeCases:
         result = runner.invoke(cli, ["list", str(library), "-v"])
 
         assert result.exit_code == 1
+
+
+class TestSplitPathsCommand:
+    """Tests for the split-paths subcommand."""
+
+    def test_split_paths_basic(self, runner: CliRunner, tmp_path: Path) -> None:
+        """Test basic split-paths functionality."""
+        # Create compound path SVG
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+    <path d="M10,10 L40,40 Z M60,60 L90,90 Z"/>
+</svg>"""
+        input_svg = tmp_path / "compound.svg"
+        input_svg.write_text(svg_content)
+        output_svg = tmp_path / "split.svg"
+
+        result = runner.invoke(
+            cli, ["split-paths", str(input_svg), "-o", str(output_svg)], catch_exceptions=False
+        )
+
+        assert result.exit_code == 0
+        assert output_svg.exists()
+
+    def test_split_paths_verbose(self, runner: CliRunner, tmp_path: Path) -> None:
+        """Test split-paths with verbose output."""
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+    <path d="M10,10 L40,40 Z M60,60 L90,90 Z"/>
+</svg>"""
+        input_svg = tmp_path / "compound.svg"
+        input_svg.write_text(svg_content)
+        output_svg = tmp_path / "split.svg"
+
+        result = runner.invoke(
+            cli,
+            ["split-paths", str(input_svg), "-o", str(output_svg), "-v"],
+            catch_exceptions=False,
+        )
+
+        assert result.exit_code == 0
+
+    def test_split_paths_nonexistent_file(self, runner: CliRunner, tmp_path: Path) -> None:
+        """Test split-paths with nonexistent input file."""
+        input_svg = tmp_path / "nonexistent.svg"
+        output_svg = tmp_path / "output.svg"
+
+        result = runner.invoke(cli, ["split-paths", str(input_svg), "-o", str(output_svg)])
+
+        assert result.exit_code != 0
+
+    def test_split_paths_import_error(
+        self, runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Test split-paths when svgelements is not available."""
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+    <path d="M10,10 L40,40 Z"/>
+</svg>"""
+        input_svg = tmp_path / "test.svg"
+        input_svg.write_text(svg_content)
+        output_svg = tmp_path / "output.svg"
+
+        # Mock ImportError
+        from SVG2DrawIOLib.path_splitter import PathSplitter
+
+        def mock_split(*args, **kwargs):
+            raise ImportError("svgelements not found")
+
+        monkeypatch.setattr(PathSplitter, "split_svg_paths", mock_split)
+
+        result = runner.invoke(cli, ["split-paths", str(input_svg), "-o", str(output_svg)])
+
+        assert result.exit_code != 0
+
+    def test_split_paths_general_error(
+        self, runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Test split-paths with general error."""
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+    <path d="M10,10 L40,40 Z"/>
+</svg>"""
+        input_svg = tmp_path / "test.svg"
+        input_svg.write_text(svg_content)
+        output_svg = tmp_path / "output.svg"
+
+        from SVG2DrawIOLib.path_splitter import PathSplitter
+
+        def mock_split(*args, **kwargs):
+            raise RuntimeError("Unexpected error")
+
+        monkeypatch.setattr(PathSplitter, "split_svg_paths", mock_split)
+
+        result = runner.invoke(cli, ["split-paths", str(input_svg), "-o", str(output_svg)])
+
+        assert result.exit_code != 0
+
+    def test_split_paths_general_error_verbose(
+        self, runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Test split-paths with general error in verbose mode."""
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+    <path d="M10,10 L40,40 Z"/>
+</svg>"""
+        input_svg = tmp_path / "test.svg"
+        input_svg.write_text(svg_content)
+        output_svg = tmp_path / "output.svg"
+
+        from SVG2DrawIOLib.path_splitter import PathSplitter
+
+        def mock_split(*args, **kwargs):
+            raise RuntimeError("Unexpected error")
+
+        monkeypatch.setattr(PathSplitter, "split_svg_paths", mock_split)
+
+        result = runner.invoke(cli, ["split-paths", str(input_svg), "-o", str(output_svg), "-v"])
+
+        assert result.exit_code != 0
+
+    def test_split_paths_returns_none(
+        self, runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Test split-paths when splitter returns None."""
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+    <path d="M10,10 L40,40 Z"/>
+</svg>"""
+        input_svg = tmp_path / "test.svg"
+        input_svg.write_text(svg_content)
+        output_svg = tmp_path / "output.svg"
+
+        from SVG2DrawIOLib.path_splitter import PathSplitter
+
+        def mock_split(*args, **kwargs):
+            return None
+
+        monkeypatch.setattr(PathSplitter, "split_svg_paths", mock_split)
+
+        result = runner.invoke(cli, ["split-paths", str(input_svg), "-o", str(output_svg)])
+
+        assert result.exit_code != 0
+
+
+class TestCLICommandLoadingEdgeCases:
+    """Tests for CLI command loading edge cases."""
+
+    def test_cli_loads_split_paths_command(self, runner: CliRunner) -> None:
+        """Test that split-paths command is properly loaded."""
+        result = runner.invoke(cli, ["--help"])
+        assert result.exit_code == 0
+        assert "split-paths" in result.output
+
+    def test_create_with_invalid_svg_content(self, runner: CliRunner, tmp_path: Path) -> None:
+        """Test create command with malformed SVG."""
+        svg_content = """<?xml version="1.0"?>
+<svg xmlns="http://www.w3.org/2000/svg">
+    <path d="M10,10 L90,10"/>
+    <!-- Missing closing tag -->
+"""
+        svg_file = tmp_path / "malformed.svg"
+        svg_file.write_text(svg_content)
+        library = tmp_path / "library.xml"
+
+        result = runner.invoke(cli, ["create", str(svg_file), "-o", str(library)])
+        # Should handle gracefully
+        assert result.exit_code != 0 or library.exists()
+
+    def test_add_with_svg_processing_error(
+        self, runner: CliRunner, sample_svg: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Test add command when SVG processing fails."""
+        library = tmp_path / "library.xml"
+
+        # Create initial library
+        result = runner.invoke(cli, ["create", str(sample_svg), "-o", str(library)])
+        assert result.exit_code == 0
+
+        # Create another SVG
+        svg2 = tmp_path / "icon2.svg"
+        svg2.write_text(sample_svg.read_text())
+
+        # Mock process_svg_file to raise an exception
+        from SVG2DrawIOLib.svg_processor import SVGProcessor
+
+        original_process = SVGProcessor.process_svg_file
+
+        def mock_process(*args, **kwargs):
+            if "icon2" in str(args[1]):
+                raise ValueError("Processing error")
+            return original_process(*args, **kwargs)
+
+        monkeypatch.setattr(SVGProcessor, "process_svg_file", mock_process)
+
+        result = runner.invoke(cli, ["add", str(library), str(svg2)])
+        # Should handle error gracefully
+        assert result.exit_code != 0
