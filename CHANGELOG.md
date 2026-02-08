@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.1.2] - 2026-02-08
 
+### Fixed
+
+- **SVG Namespace Correctness**: Fixed `<style>` element creation in `add_css_classes()` to use proper SVG namespace. The style element is now created as `{http://www.w3.org/2000/svg}style` instead of a non-namespaced element, improving standards compliance and compatibility with strict XML parsers. The style element is now inserted inside `<defs>` if it exists, or at the top of the document otherwise, following SVG best practices.
+
 ### Changed
 
 - **Error Handling**: Refactored all CLI commands to use `rich_click.ClickException` and `rich_click.Abort()` instead of `sys.exit()` for better error handling and consistency with the Click framework. This provides cleaner exception handling and more idiomatic Click code.

@@ -76,7 +76,8 @@ class SVGProcessor:
 
         logger.debug(f"Adding CSS classes to <{tag}> elements")
 
-        style = ET.Element("style")
+        # Create properly namespaced style element
+        style = ET.Element(f"{{{self.options.xml_namespace}}}style")
         style.set("type", "text/css")
         style.text = ""
 
@@ -105,8 +106,16 @@ class SVGProcessor:
             element_count += 1
 
         if element_count > 0:
-            root.append(style)
-            logger.debug(f"Added CSS classes to {element_count} elements")
+            # Insert style element in proper location (inside defs or at top)
+            defs = root.find(f"{{{self.options.xml_namespace}}}defs")
+            if defs is not None:
+                # Insert at start of defs element
+                defs.insert(0, style)
+                logger.debug(f"Added CSS classes to {element_count} elements (style in <defs>)")
+            else:
+                # Insert as first child of root
+                root.insert(0, style)
+                logger.debug(f"Added CSS classes to {element_count} elements (style at top)")
         else:
             logger.warning(f"No <{tag}> elements found in SVG")
 
