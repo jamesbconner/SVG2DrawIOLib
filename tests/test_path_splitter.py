@@ -432,3 +432,33 @@ class TestPathSplitter:
         assert class_names[0] != class_names[2], (
             "First path from each compound should have different class names"
         )
+
+    def test_group_paths_with_holes_bbox_returns_none(
+        self, splitter: PathSplitter, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Test _group_paths_with_holes handles bbox returning None without exception."""
+        import svgelements
+
+        # Create mock paths
+        path1 = svgelements.Path("M10,10 L40,40 Z")
+        path2 = svgelements.Path("M60,60 L90,90 Z")
+
+        # Mock bbox to return None for first path (without raising exception)
+        original_bbox = svgelements.Path.bbox
+        call_count = [0]
+
+        def mock_bbox(self):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                return None  # Return None without exception
+            return original_bbox(self)
+
+        svgelements.Path.bbox = mock_bbox
+
+        try:
+            groups = splitter._group_paths_with_holes([path1, path2])
+            # Both paths should be included, even though path1 has None bbox
+            total_paths = sum(len(group) for group in groups)
+            assert total_paths == 2, f"Expected 2 paths, got {total_paths}"
+        finally:
+            svgelements.Path.bbox = original_bbox

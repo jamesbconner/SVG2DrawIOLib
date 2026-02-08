@@ -156,8 +156,8 @@ class PathSplitter:
         for sp in subpaths:
             try:
                 bbox = sp.bbox()
-                if bbox:
-                    paths_with_bbox.append((sp, bbox))
+                # Always include the path, even if bbox is None
+                paths_with_bbox.append((sp, bbox))
             except Exception as e:
                 logger.debug(f"Could not get bbox for subpath: {e}")
                 # Include path without bbox

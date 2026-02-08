@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Duplicate ID Attributes**: Fixed path splitting to create unique IDs (`originalid-0`, `originalid-1`, etc.) when the original path has an `id` attribute, preventing SVG/XML validation errors.
 - **Whitespace-Only Class Attribute**: Fixed IndexError when an SVG element has a class attribute containing only whitespace. Now properly handles empty/whitespace-only class attributes by generating a new class name.
 - **Class Name Collision in Path Splitting**: Fixed duplicate class names when splitting multiple compound paths. Now uses a global counter to ensure all split paths get unique class names (path0, path1, path2, etc.) instead of resetting the counter for each compound path.
+- **Subpath Data Loss**: Fixed silent data loss in `_group_paths_with_holes` when `bbox()` returns `None` without raising an exception. Now all subpaths are preserved in the output, even those with empty or invalid geometry that return `None` from `bbox()`.
 
 ### Changed
 
