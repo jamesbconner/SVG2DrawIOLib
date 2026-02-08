@@ -237,7 +237,7 @@ def create(
         console.print("\n[yellow]Interrupted by user[/yellow]")
         sys.exit(130)
     except Exception as e:
-        logger.error(f"Unexpected error: {e}")
+        logger.error(f"Failed to create library: {e}")
         if verbose:
             raise
         sys.exit(1)

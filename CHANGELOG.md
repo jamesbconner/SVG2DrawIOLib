@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] - 2026-02-08
+
+### Changed
+
+- **Logging Consistency**: Standardized logging styles across all CLI commands for better consistency and clarity.
+  - Updated `split-paths` command to use `setup_logging()` helper function instead of `logging.basicConfig()`, matching all other CLI commands.
+  - Made error messages more descriptive with operation context (e.g., "Failed to create library" instead of "Unexpected error").
+  - Moved logger initialization in `split-paths` from module-level to function-level for consistency with other commands.
+
 ## [1.1.0] - 2026-02-08
 
 ### Added

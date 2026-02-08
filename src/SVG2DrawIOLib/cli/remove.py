@@ -70,7 +70,7 @@ def remove(
             )
 
     except Exception as e:
-        logger.error(f"Error: {e}")
+        logger.error(f"Failed to remove icons: {e}")
         if verbose:
             raise
         sys.exit(1)

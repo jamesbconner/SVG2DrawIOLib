@@ -69,7 +69,7 @@ def list(
         console.print(f"\n[green]Total:[/green] {len(icon_names)} icon(s)")
 
     except Exception as e:
-        logger.error(f"Error: {e}")
+        logger.error(f"Failed to list icons: {e}")
         if verbose:
             raise
         sys.exit(1)

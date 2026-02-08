@@ -1,13 +1,13 @@
 """Split compound SVG paths into individual subpaths for color customization."""
 
 import logging
+import sys
 from pathlib import Path
 
 import click
 
+from SVG2DrawIOLib.cli.helpers import setup_logging
 from SVG2DrawIOLib.path_splitter import PathSplitter
-
-logger = logging.getLogger(__name__)
 
 
 @click.command(name="split-paths")
@@ -42,10 +42,8 @@ def split_paths(input_file: Path, output: Path, verbose: bool) -> None:
     The output SVG can then be used with the 'create' or 'add' commands with
     the --css flag to enable color editing in DrawIO.
     """
-    if verbose:
-        logging.basicConfig(level=logging.DEBUG)
-    else:
-        logging.basicConfig(level=logging.INFO)
+    setup_logging(verbose, quiet=False)
+    logger = logging.getLogger(__name__)
 
     logger.info(f"Splitting paths in: {input_file}")
 
@@ -63,7 +61,7 @@ def split_paths(input_file: Path, output: Path, verbose: bool) -> None:
         logger.error("Path splitting requires svgelements library")
         raise click.Abort() from e
     except Exception as e:
-        logger.error(f"Error splitting paths: {e}")
+        logger.error(f"Failed to split paths: {e}")
         if verbose:
             raise
-        raise click.Abort() from e
+        sys.exit(1)

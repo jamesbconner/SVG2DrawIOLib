@@ -236,7 +236,7 @@ def add(
         )
 
     except Exception as e:
-        logger.error(f"Error: {e}")
+        logger.error(f"Failed to add icons to library: {e}")
         if verbose:
             raise
         sys.exit(1)
