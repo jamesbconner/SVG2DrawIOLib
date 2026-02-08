@@ -65,9 +65,9 @@ def split_paths(input_file: Path, output: Path, verbose: bool) -> None:
     except ImportError as e:
         logger.error(f"Missing required dependency: {e}")
         logger.error("Path splitting requires svgelements library")
-        raise click.Abort()
+        raise click.Abort() from e
     except Exception as e:
         logger.error(f"Error splitting paths: {e}")
         if verbose:
             raise
-        raise click.Abort()
+        raise click.Abort() from e

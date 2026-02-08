@@ -88,9 +88,7 @@ class TestPathSplitter:
         assert d_attr is not None
         assert d_attr.count("M") == 2
 
-    def test_single_path_not_split(
-        self, splitter: PathSplitter, tmp_path: Path
-    ) -> None:
+    def test_single_path_not_split(self, splitter: PathSplitter, tmp_path: Path) -> None:
         """Test that single paths are not split."""
         svg_content = """<?xml version="1.0" encoding="utf-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
@@ -155,9 +153,7 @@ class TestPathSplitter:
         # The largest group should contain the outer path
         assert outer in groups[0]
 
-    def test_preserves_path_attributes(
-        self, splitter: PathSplitter, tmp_path: Path
-    ) -> None:
+    def test_preserves_path_attributes(self, splitter: PathSplitter, tmp_path: Path) -> None:
         """Test that original path attributes are preserved."""
         svg_content = """<?xml version="1.0" encoding="utf-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
@@ -179,3 +175,50 @@ class TestPathSplitter:
             assert path.get("fill") == "#ff0000"
             assert path.get("stroke") == "#0000ff"
             assert path.get("stroke-width") == "2"
+
+    def test_creates_unique_ids_for_split_paths(
+        self, splitter: PathSplitter, tmp_path: Path
+    ) -> None:
+        """Test that split paths get unique IDs to avoid duplicates."""
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+    <path id="mypath" d="M10,10 L40,40 Z M60,60 L90,90 Z"/>
+</svg>"""
+        svg_file = tmp_path / "with_id.svg"
+        svg_file.write_text(svg_content)
+
+        output = tmp_path / "output.svg"
+        result = splitter.split_svg_paths(svg_file, output)
+
+        assert result is not None
+        tree = ET.parse(output)
+        root = tree.getroot()
+        paths = root.findall(".//{http://www.w3.org/2000/svg}path")
+
+        # Should have 2 paths with unique IDs
+        assert len(paths) == 2
+        assert paths[0].get("id") == "mypath-0"
+        assert paths[1].get("id") == "mypath-1"
+
+    def test_no_id_attribute_when_original_has_none(
+        self, splitter: PathSplitter, tmp_path: Path
+    ) -> None:
+        """Test that split paths don't get id attributes if original had none."""
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+    <path d="M10,10 L40,40 Z M60,60 L90,90 Z"/>
+</svg>"""
+        svg_file = tmp_path / "no_id.svg"
+        svg_file.write_text(svg_content)
+
+        output = tmp_path / "output.svg"
+        result = splitter.split_svg_paths(svg_file, output)
+
+        assert result is not None
+        tree = ET.parse(output)
+        root = tree.getroot()
+        paths = root.findall(".//{http://www.w3.org/2000/svg}path")
+
+        # Neither path should have an id attribute
+        for path in paths:
+            assert path.get("id") is None

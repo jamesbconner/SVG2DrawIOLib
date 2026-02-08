@@ -103,6 +103,55 @@ class TestSVGProcessor:
         # Should preserve original fill color (#000000), not use default (#FF0000)
         assert ".path0{fill:#000000;}" in styles[0].text
 
+    def test_add_css_classes_with_multi_class_elements(
+        self, processor: SVGProcessor, tmp_path: Path
+    ) -> None:
+        """Test CSS generation for elements with multiple classes (Bug fix)."""
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+    <path d="M10,10 L40,40" class="myclass path0" fill="#ff0000"/>
+</svg>"""
+        svg_file = tmp_path / "multi_class.svg"
+        svg_file.write_text(svg_content)
+
+        options = SVGProcessingOptions(add_css=True)
+        processor = SVGProcessor(options)
+        tree = processor.load_svg(svg_file)
+        modified = processor.add_css_classes(tree)
+
+        root = modified.getroot()
+        styles = list(root.iter("style"))
+        assert len(styles) == 1
+        # Should use first class only, not create descendant selector
+        assert ".myclass{fill:#ff0000;}" in styles[0].text
+        # Should NOT create invalid descendant selector
+        assert ".myclass path0" not in styles[0].text
+
+    def test_add_css_classes_avoids_duplicate_selectors(
+        self, processor: SVGProcessor, tmp_path: Path
+    ) -> None:
+        """Test that duplicate CSS selectors are avoided (Bug fix)."""
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+    <path d="M10,10 L40,40" class="shape" fill="#ff0000"/>
+    <path d="M60,60 L90,90" class="shape" fill="#00ff00"/>
+</svg>"""
+        svg_file = tmp_path / "duplicate_class.svg"
+        svg_file.write_text(svg_content)
+
+        options = SVGProcessingOptions(add_css=True)
+        processor = SVGProcessor(options)
+        tree = processor.load_svg(svg_file)
+        modified = processor.add_css_classes(tree)
+
+        root = modified.getroot()
+        styles = list(root.iter("style"))
+        assert len(styles) == 1
+        # Should only have one .shape rule (first occurrence)
+        assert styles[0].text.count(".shape{") == 1
+        # Should use the first element's fill color
+        assert ".shape{fill:#ff0000;}" in styles[0].text
+
     def test_get_svg_dimensions_from_viewbox(
         self, processor: SVGProcessor, sample_svg_file: Path
     ) -> None:

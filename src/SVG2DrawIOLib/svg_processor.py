@@ -81,18 +81,26 @@ class SVGProcessor:
         style.text = ""
 
         element_count = 0
+        seen_classes: set[str] = set()  # Track classes to avoid duplicates
+        
         for index, element in enumerate(root.iter(tag)):
             # Preserve existing class if present, otherwise create new one
             existing_class = element.get("class", "")
             if existing_class:
-                class_name = existing_class.strip()
+                # Use the first class for CSS selector (handles multi-class case)
+                class_name = existing_class.strip().split()[0]
             else:
                 class_name = f"path{index}"
                 element.set("class", class_name)
 
             # Preserve original fill color, or use default if none specified
             original_fill = element.get("fill", default_color)
-            style.text += f".{class_name}{{fill:{original_fill};}}"
+            
+            # Only add CSS rule if we haven't seen this class before
+            if class_name not in seen_classes:
+                style.text += f".{class_name}{{fill:{original_fill};}}"
+                seen_classes.add(class_name)
+            
             element_count += 1
 
         if element_count > 0:

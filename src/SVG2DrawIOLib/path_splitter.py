@@ -3,6 +3,7 @@
 import logging
 import xml.etree.ElementTree as ET
 from pathlib import Path
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -14,9 +15,7 @@ class PathSplitter:
         """Initialize the PathSplitter."""
         pass
 
-    def split_svg_paths(
-        self, input_path: Path, output_path: Path
-    ) -> dict[str, int] | None:
+    def split_svg_paths(self, input_path: Path, output_path: Path) -> dict[str, int] | None:
         """Split compound paths in an SVG file.
 
         Args:
@@ -105,9 +104,15 @@ class PathSplitter:
                     new_path.set("d", combined_d)
 
                     # Copy attributes from original (fill, stroke, etc.)
+                    # Skip 'd' and 'id' to avoid duplicates
                     for attr, value in path_elem.attrib.items():
-                        if attr != "d":
+                        if attr not in ("d", "id"):
                             new_path.set(attr, value)
+                    
+                    # If original had an id, create unique ids for split paths
+                    original_id = path_elem.get("id")
+                    if original_id:
+                        new_path.set("id", f"{original_id}-{group_idx}")
 
                     # Add CSS class for color control
                     existing_class = new_path.get("class", "")
@@ -132,7 +137,7 @@ class PathSplitter:
             "holes_preserved": holes_preserved,
         }
 
-    def _group_paths_with_holes(self, subpaths: list) -> list[list]:
+    def _group_paths_with_holes(self, subpaths: list[Any]) -> list[list[Any]]:
         """Group subpaths, keeping holes with their parent paths.
 
         Paths that are completely contained within another path are considered
@@ -157,10 +162,10 @@ class PathSplitter:
                 paths_with_bbox.append((sp, None))
 
         # Sort by area (largest first) - paths with no bbox go last
-        def get_area(item):
+        def get_area(item: tuple[Any, tuple[float, float, float, float] | None]) -> float:
             _, bbox = item
             if bbox is None:
-                return -1
+                return -1.0
             x1, y1, x2, y2 = bbox
             return (x2 - x1) * (y2 - y1)
 
@@ -183,11 +188,15 @@ class PathSplitter:
 
             # Find all paths contained within this one
             for j, (inner_path, inner_bbox) in enumerate(paths_with_bbox):
-                if j != i and j not in used and inner_bbox is not None:
-                    if self._is_path_inside_another(inner_bbox, outer_bbox):
-                        group.append(inner_path)
-                        used.add(j)
-                        logger.debug(f"Path {j} is inside path {i} (hole detected)")
+                if (
+                    j != i
+                    and j not in used
+                    and inner_bbox is not None
+                    and self._is_path_inside_another(inner_bbox, outer_bbox)
+                ):
+                    group.append(inner_path)
+                    used.add(j)
+                    logger.debug(f"Path {j} is inside path {i} (hole detected)")
 
             groups.append(group)
             used.add(i)
@@ -195,7 +204,8 @@ class PathSplitter:
         return groups
 
     def _is_path_inside_another(
-        self, inner_bbox: tuple[float, float, float, float],
+        self,
+        inner_bbox: tuple[float, float, float, float],
         outer_bbox: tuple[float, float, float, float],
     ) -> bool:
         """Check if inner bounding box is completely contained within outer.
@@ -220,9 +230,7 @@ class PathSplitter:
             and inner_y2 <= outer_y2 + tolerance
         )
 
-    def _find_parent(
-        self, root: ET.Element, target: ET.Element
-    ) -> ET.Element | None:
+    def _find_parent(self, root: ET.Element, target: ET.Element) -> ET.Element | None:
         """Find the parent element of a target element.
 
         Args:
