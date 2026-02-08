@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Extract Command**: New `extract` CLI command for extracting icons from DrawIO libraries back to individual SVG files. This is the inverse operation of `create`, allowing users to recover SVG files from library files. Supports extracting all icons or specific icons by name, with optional overwrite functionality.
 - **Rename Command**: New `rename` CLI command for renaming icons within a DrawIO library. Allows renaming a single icon while preserving its content. Supports optional `--overwrite` flag to replace an existing icon with the new name.
 - **Inspect Command**: New `inspect` CLI command for displaying detailed information about icons in a DrawIO library. Shows dimensions, shape type, CSS classes, and inline styles for each icon. Supports inspecting all icons or specific icons by name, with optional `--show-svg` flag to display the decoded SVG content. Includes `--json` flag for machine-readable JSON output.
+- **Validate Command**: New `validate` CLI command for comprehensive validation of DrawIO library files. Validates XML structure, JSON format, icon integrity (required fields, dimensions, base64 encoding, compression), mxGraphModel structure, and SVG content (namespace, viewBox/dimensions, empty SVG detection). Provides detailed error and warning messages with color-coded status output. Includes `LibraryValidator` service class following SOLID principles for separation of concerns.
 
 ### Changed
 

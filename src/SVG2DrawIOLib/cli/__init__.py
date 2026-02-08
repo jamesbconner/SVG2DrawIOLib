@@ -47,7 +47,16 @@ rc.rich_click.COMMAND_GROUPS = {
     "SVG2DrawIOLib": [
         {
             "name": "Library Management Commands",
-            "commands": ["create", "add", "remove", "list", "extract", "rename", "inspect"],
+            "commands": [
+                "create",
+                "add",
+                "remove",
+                "list",
+                "extract",
+                "rename",
+                "inspect",
+                "validate",
+            ],
             "table_styles": {
                 "show_lines": True,
                 "row_styles": ["none"],
