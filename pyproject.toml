@@ -59,6 +59,7 @@ Changelog = "https://github.com/jamesbconner/SVG2DrawIOLib/blob/main/CHANGELOG.m
 
 [project.scripts]
 SVG2DrawIOLib = "SVG2DrawIOLib.cli:cli"
+svg2drawiolib = "SVG2DrawIOLib.cli:cli"
 
 [tool.hatch.version]
 path = "src/SVG2DrawIOLib/__about__.py"
