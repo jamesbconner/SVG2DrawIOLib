@@ -1,16 +1,13 @@
 """Extract icons from DrawIO library to SVG files."""
 
-import base64
 import logging
-import re
-import xml.etree.ElementTree as ET
-import zlib
 from pathlib import Path
 
 import rich_click as rc
 from rich.console import Console
 
 from SVG2DrawIOLib.cli.helpers import setup_logging
+from SVG2DrawIOLib.icon_analyzer import IconAnalyzer
 from SVG2DrawIOLib.library_manager import LibraryManager
 
 console = Console()
@@ -123,6 +120,9 @@ def extract(
 
         logger.info(f"Extracting {len(icons)} icon(s) from library")
 
+        # Create analyzer
+        analyzer = IconAnalyzer()
+
         # Extract each icon
         extracted_count = 0
         skipped_count = 0
@@ -130,22 +130,16 @@ def extract(
         for icon in icons:
             output_path = output_dir / f"{icon.name}.svg"
 
-            # Check if file exists
-            if output_path.exists() and not overwrite:
-                logger.debug(f"Skipping existing file: {output_path}")
-                skipped_count += 1
-                continue
-
             try:
-                # Decompress and decode the icon data
-                svg_content = _extract_svg_from_icon(icon.xml_data)
+                # Extract icon to file
+                was_extracted = analyzer.extract_to_file(icon, output_path, overwrite)
 
-                # Write SVG file
-                output_path.write_text(svg_content, encoding="utf-8")
-                logger.debug(f"Extracted: {icon.name} -> {output_path}")
-                extracted_count += 1
+                if was_extracted:
+                    extracted_count += 1
+                else:
+                    skipped_count += 1
 
-            except Exception as e:
+            except ValueError as e:
                 logger.error(f"Failed to extract {icon.name}: {e}")
                 if verbose:
                     raise
@@ -172,48 +166,3 @@ def extract(
         if verbose:
             raise
         raise rc.ClickException(f"Failed to extract icons: {e}") from e
-
-
-def _extract_svg_from_icon(xml_data: bytes) -> str:
-    """Extract SVG content from compressed DrawIO icon data.
-
-    Args:
-        xml_data: Base64-encoded, compressed mxGraphModel XML.
-
-    Returns:
-        SVG content as string.
-
-    Raises:
-        ValueError: If the data cannot be decompressed or parsed.
-    """
-    try:
-        # Decode base64
-        compressed = base64.b64decode(xml_data)
-
-        # Decompress using raw DEFLATE (wbits=-15)
-        decompressed = zlib.decompress(compressed, wbits=-15)
-
-        # Parse mxGraphModel XML
-        root = ET.fromstring(decompressed)  # nosec B314 - User-provided library file, user controls input
-
-        # Find the data URI in the mxCell style attribute
-        # The SVG is embedded as a data URI in the style attribute
-        # Format: style="shape=image;...;image=data:image/svg+xml,<base64_encoded_svg>"
-        for cell in root.iter("mxCell"):
-            style = cell.get("style", "")
-            if "image=data:image/svg+xml," in style:
-                # Extract the data URI
-                match = re.search(r"image=data:image/svg\+xml,([^;]+)", style)
-                if match:
-                    # The SVG is base64 encoded in the data URI
-                    encoded_svg = match.group(1)
-                    svg_bytes = base64.b64decode(encoded_svg)
-                    svg_content = svg_bytes.decode("utf-8")
-                    return svg_content
-
-        raise ValueError("No SVG data URI found in mxGraphModel")
-
-    except zlib.error as e:
-        raise ValueError(f"Failed to decompress icon data: {e}") from e
-    except ET.ParseError as e:
-        raise ValueError(f"Failed to parse mxGraphModel XML: {e}") from e

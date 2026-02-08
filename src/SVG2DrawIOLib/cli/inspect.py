@@ -1,11 +1,7 @@
 """Inspect command - Display detailed information about icons in a DrawIO library."""
 
-import base64
 import json
 import logging
-import re
-import xml.etree.ElementTree as ET
-import zlib
 from pathlib import Path
 
 import rich_click as rc
@@ -14,6 +10,7 @@ from rich.syntax import Syntax
 from rich.table import Table
 
 from SVG2DrawIOLib.cli.helpers import console, setup_logging
+from SVG2DrawIOLib.icon_analyzer import IconAnalyzer
 from SVG2DrawIOLib.library_manager import LibraryManager
 
 
@@ -182,29 +179,9 @@ def _collect_icon_info(icon, show_svg: bool, logger: logging.Logger) -> dict:
         Dictionary containing icon information.
     """
     try:
-        # Extract SVG and style information
-        svg_content, style_info = _extract_icon_details(icon.xml_data)
-
-        icon_data = {
-            "name": icon.name,
-            "width": icon.dimensions.width,
-            "height": icon.dimensions.height,
-        }
-
-        # Add style information if present
-        if style_info["shape"]:
-            icon_data["shape_type"] = style_info["shape"]
-
-        if style_info["css_classes"]:
-            icon_data["css_classes"] = style_info["css_classes"]
-
-        if style_info["inline_styles"]:
-            icon_data["inline_styles"] = style_info["inline_styles"]
-
-        # Add SVG content if requested
-        if show_svg and svg_content:
-            icon_data["svg_content"] = svg_content
-
+        # Use IconAnalyzer to extract icon information
+        analyzer = IconAnalyzer()
+        icon_data = analyzer.get_icon_info(icon, include_svg=show_svg)
         logger.debug(f"Collected info for icon: {icon.name}")
         return icon_data
 
@@ -225,8 +202,9 @@ def _display_icon_info(icon, show_svg: bool, logger: logging.Logger) -> None:
         logger: Logger instance for debug output.
     """
     try:
-        # Extract SVG and style information
-        svg_content, style_info = _extract_icon_details(icon.xml_data)
+        # Use IconAnalyzer to extract icon information
+        analyzer = IconAnalyzer()
+        svg_content, style_info = analyzer.extract_details(icon.xml_data)
 
         # Create info table
         table = Table(title=f"[bold cyan]{icon.name}[/bold cyan]", show_header=False, box=None)
@@ -238,14 +216,14 @@ def _display_icon_info(icon, show_svg: bool, logger: logging.Logger) -> None:
         table.add_row("Height", f"{icon.dimensions.height:.1f} px")
 
         # Add style information
-        if style_info["shape"]:
-            table.add_row("Shape Type", style_info["shape"])
+        if style_info.shape:
+            table.add_row("Shape Type", style_info.shape)
 
-        if style_info["css_classes"]:
-            table.add_row("CSS Classes", ", ".join(style_info["css_classes"]))
+        if style_info.css_classes:
+            table.add_row("CSS Classes", ", ".join(style_info.css_classes))
 
-        if style_info["inline_styles"]:
-            table.add_row("Inline Styles", style_info["inline_styles"])
+        if style_info.inline_styles:
+            table.add_row("Inline Styles", style_info.inline_styles)
 
         console.print(table)
 
@@ -264,85 +242,3 @@ def _display_icon_info(icon, show_svg: bool, logger: logging.Logger) -> None:
     except Exception as e:
         logger.error(f"Failed to inspect icon {icon.name}: {e}")
         console.print(f"[red]✗ Error inspecting {icon.name}:[/red] {e}")
-
-
-def _extract_icon_details(xml_data: bytes) -> tuple[str, dict[str, any]]:
-    """Extract SVG content and style information from icon data.
-
-    Args:
-        xml_data: Base64-encoded, compressed mxGraphModel XML.
-
-    Returns:
-        Tuple of (svg_content, style_info_dict).
-
-    Raises:
-        ValueError: If the data cannot be decompressed or parsed.
-    """
-    try:
-        # Decode base64
-        compressed = base64.b64decode(xml_data)
-
-        # Decompress using raw DEFLATE (wbits=-15)
-        decompressed = zlib.decompress(compressed, wbits=-15)
-
-        # Parse mxGraphModel XML
-        root = ET.fromstring(decompressed)  # nosec B314 - User-provided library file
-
-        # Initialize style info
-        style_info = {
-            "shape": None,
-            "css_classes": [],
-            "inline_styles": None,
-        }
-
-        svg_content = None
-
-        # Find the mxCell with the image data URI
-        for cell in root.iter("mxCell"):
-            style = cell.get("style", "")
-
-            # Extract shape type
-            if "shape=" in style:
-                shape_match = re.search(r"shape=([^;]+)", style)
-                if shape_match:
-                    style_info["shape"] = shape_match.group(1)
-
-            # Extract image data URI
-            if "image=data:image/svg+xml," in style:
-                match = re.search(r"image=data:image/svg\+xml,([^;]+)", style)
-                if match:
-                    encoded_svg = match.group(1)
-                    svg_bytes = base64.b64decode(encoded_svg)
-                    svg_content = svg_bytes.decode("utf-8")
-
-                    # Parse SVG to extract CSS classes and styles
-                    try:
-                        svg_root = ET.fromstring(svg_content)  # nosec B314
-
-                        # Extract CSS classes from elements
-                        css_classes = set()
-                        for elem in svg_root.iter():
-                            class_attr = elem.get("class", "")
-                            if class_attr:
-                                css_classes.update(class_attr.split())
-
-                        if css_classes:
-                            style_info["css_classes"] = sorted(css_classes)
-
-                        # Check for inline style elements and extract CSS rules
-                        for style_elem in svg_root.iter("{http://www.w3.org/2000/svg}style"):
-                            if style_elem.text:
-                                # Clean up the CSS text (remove extra whitespace)
-                                css_text = style_elem.text.strip()
-                                style_info["inline_styles"] = css_text
-                                break
-
-                    except ET.ParseError:
-                        pass  # SVG parsing failed, continue without style info
-
-        return svg_content or "", style_info
-
-    except zlib.error as e:
-        raise ValueError(f"Failed to decompress icon data: {e}") from e
-    except ET.ParseError as e:
-        raise ValueError(f"Failed to parse mxGraphModel XML: {e}") from e

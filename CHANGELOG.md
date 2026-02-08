@@ -13,8 +13,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Rename Command**: New `rename` CLI command for renaming icons within a DrawIO library. Allows renaming a single icon while preserving its content. Supports optional `--overwrite` flag to replace an existing icon with the new name.
 - **Inspect Command**: New `inspect` CLI command for displaying detailed information about icons in a DrawIO library. Shows dimensions, shape type, CSS classes, and inline styles for each icon. Supports inspecting all icons or specific icons by name, with optional `--show-svg` flag to display the decoded SVG content. Includes `--json` flag for machine-readable JSON output.
 - **Validate Command**: New `validate` CLI command for comprehensive validation of DrawIO library files. Validates XML structure, JSON format, icon integrity (required fields, dimensions, base64 encoding, compression), mxGraphModel structure, and SVG content (namespace, viewBox/dimensions, empty SVG detection). Provides detailed error and warning messages with color-coded status output. Includes `LibraryValidator` service class following SOLID principles for separation of concerns.
+- **CLI Command Groups**: Reorganized CLI commands into three logical groups for better discoverability: Library Management Commands (create, add, remove, extract, rename), Library Inspection Commands (list, inspect, validate), and SVG Processing Commands (split-paths).
 
 ### Changed
+
+- **Refactored CLI Commands**: Improved separation of concerns following SOLID principles. Business logic has been extracted from CLI commands into reusable service classes:
+  - Created `IconAnalyzer` service for extracting and analyzing icon content (used by `extract` and `inspect` commands)
+  - Added `LibraryManager.rename_icon()` method for icon renaming logic (used by `rename` command)
+  - CLI commands are now thin orchestration layers that delegate to service classes
+  - All business logic is now testable independently of the CLI layer
+- **Test Organization**: Improved test file organization for consistency. Each CLI command now has its own dedicated test file (`test_cli_extract.py`, `test_cli_rename.py`, etc.) following the same pattern as other command tests.
 
 ### Fixed
 

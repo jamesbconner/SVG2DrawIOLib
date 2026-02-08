@@ -86,86 +86,38 @@ def rename(
     logger = logging.getLogger(__name__)
 
     try:
-        # Validate names
-        if not old_name.strip():
-            console.print("[red]Error:[/red] Old name cannot be empty", style="bold")
-            raise rc.ClickException("Old name cannot be empty")
-
-        if not new_name.strip():
-            console.print("[red]Error:[/red] New name cannot be empty", style="bold")
-            raise rc.ClickException("New name cannot be empty")
-
-        if old_name == new_name:
-            console.print(
-                "[yellow]Warning:[/yellow] Old and new names are identical. No changes made.",
-                style="bold",
-            )
-            return
-
-        # Load library
         manager = LibraryManager()
-        icons = manager.load_library(library_file)
 
-        if not icons:
-            console.print("[red]Error:[/red] Library is empty", style="bold")
-            raise rc.ClickException("Library is empty")
+        # Rename the icon using the service
+        try:
+            metadata, was_overwritten = manager.rename_icon(
+                library_file, old_name, new_name, overwrite
+            )
 
-        # Find the icon to rename
-        icon_to_rename = None
-        icon_index = -1
-        for i, icon in enumerate(icons):
-            if icon.name == old_name:
-                icon_to_rename = icon
-                icon_index = i
-                break
-
-        if icon_to_rename is None:
-            console.print(f"[red]Error:[/red] Icon '{old_name}' not found in library", style="bold")
-            raise rc.ClickException(f"Icon '{old_name}' not found in library")
-
-        # Check if new name already exists
-        existing_icon_index = -1
-        for i, icon in enumerate(icons):
-            if icon.name == new_name:
-                existing_icon_index = i
-                break
-
-        if existing_icon_index != -1:
-            if not overwrite:
+            # Check if names were identical (no actual rename)
+            if old_name == new_name:
                 console.print(
-                    f"[red]Error:[/red] Icon '{new_name}' already exists in library. Use --overwrite to replace it.",
+                    "[yellow]Warning:[/yellow] Old and new names are identical. No changes made.",
                     style="bold",
                 )
-                raise rc.ClickException(
-                    f"Icon '{new_name}' already exists in library. Use --overwrite to replace it."
-                )
-            # Remove the existing icon with the new name
-            icons.pop(existing_icon_index)
-            # Adjust icon_index if needed
-            if existing_icon_index < icon_index:
-                icon_index -= 1
-            logger.debug(f"Removed existing icon '{new_name}' (overwrite mode)")
+                return
 
-        # Rename the icon
-        from SVG2DrawIOLib.models import DrawIOIcon
+            logger.info(f"Successfully renamed icon in library: {library_file}")
+            console.print(
+                f"[green]✓[/green] Renamed icon '{old_name}' to '{new_name}' in [cyan]{library_file}[/cyan]"
+            )
+            if was_overwritten:
+                console.print(f"    [yellow]⚠[/yellow] Replaced existing icon '{new_name}'")
+            console.print(f"    Library contains {metadata.icon_count} icon(s)")
 
-        renamed_icon = DrawIOIcon(
-            name=new_name,
-            xml_data=icon_to_rename.xml_data,
-            dimensions=icon_to_rename.dimensions,
-        )
-        icons[icon_index] = renamed_icon
-
-        logger.debug(f"Renamed icon: {old_name} -> {new_name}")
-
-        # Save the updated library
-        metadata = manager.create_library(icons, library_file)
-
-        logger.info(f"Successfully renamed icon in library: {library_file}")
-        console.print(
-            f"[green]✓[/green] Renamed icon '{old_name}' to '{new_name}' in [cyan]{library_file}[/cyan]"
-        )
-        console.print(f"    Library contains {metadata.icon_count} icon(s)")
+        except ValueError as e:
+            # Convert ValueError to ClickException with appropriate message
+            error_msg = str(e)
+            # Fix the error message to mention --overwrite flag instead of overwrite=True
+            if "Use overwrite=True" in error_msg:
+                error_msg = error_msg.replace("Use overwrite=True", "Use --overwrite")
+            console.print(f"[red]Error:[/red] {error_msg}", style="bold")
+            raise rc.ClickException(error_msg) from e
 
     except rc.ClickException:
         # Re-raise ClickException from inner handlers without wrapping

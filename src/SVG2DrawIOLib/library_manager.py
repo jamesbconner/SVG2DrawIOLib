@@ -286,3 +286,101 @@ class LibraryManager:
         icons = self.load_library(library_path)
         logger.debug(f"Found {len(icons)} icon(s) in library")
         return [icon.name for icon in icons]
+
+    def rename_icon(
+        self,
+        library_path: Path,
+        old_name: str,
+        new_name: str,
+        overwrite: bool = False,
+    ) -> tuple[LibraryMetadata, bool]:
+        """Rename an icon in a library.
+
+        Args:
+            library_path: Path to the library file.
+            old_name: Current name of the icon to rename.
+            new_name: New name for the icon.
+            overwrite: If True, replace existing icon with new_name if it exists.
+
+        Returns:
+            Tuple of (metadata, was_overwritten) where was_overwritten indicates
+            if an existing icon with new_name was replaced.
+
+        Raises:
+            ValueError: If old_name not found, new_name exists without overwrite,
+                       or names are invalid.
+        """
+        logger.info(f"Renaming icon '{old_name}' to '{new_name}' in {library_path}")
+
+        # Validate names
+        if not old_name.strip():
+            raise ValueError("Old name cannot be empty")
+
+        if not new_name.strip():
+            raise ValueError("New name cannot be empty")
+
+        if old_name == new_name:
+            logger.warning("Old and new names are identical, no changes made")
+            # Return current metadata without changes
+            icons = self.load_library(library_path)
+            return LibraryMetadata(
+                name=library_path.stem,
+                icon_count=len(icons),
+                source_files=[],
+            ), False
+
+        # Load library
+        icons = self.load_library(library_path)
+
+        if not icons:
+            raise ValueError("Library is empty")
+
+        # Find the icon to rename
+        icon_to_rename = None
+        icon_index = -1
+        for i, icon in enumerate(icons):
+            if icon.name == old_name:
+                icon_to_rename = icon
+                icon_index = i
+                break
+
+        if icon_to_rename is None:
+            raise ValueError(f"Icon '{old_name}' not found in library")
+
+        # Check if new name already exists
+        existing_icon_index = -1
+        was_overwritten = False
+        for i, icon in enumerate(icons):
+            if icon.name == new_name:
+                existing_icon_index = i
+                break
+
+        if existing_icon_index != -1:
+            if not overwrite:
+                raise ValueError(
+                    f"Icon '{new_name}' already exists in library. "
+                    "Use overwrite=True to replace it."
+                )
+            # Remove the existing icon with the new name
+            icons.pop(existing_icon_index)
+            # Adjust icon_index if needed
+            if existing_icon_index < icon_index:
+                icon_index -= 1
+            logger.debug(f"Removed existing icon '{new_name}' (overwrite mode)")
+            was_overwritten = True
+
+        # Rename the icon by creating a new one with the new name
+        renamed_icon = DrawIOIcon(
+            name=new_name,
+            xml_data=icon_to_rename.xml_data,
+            dimensions=icon_to_rename.dimensions,
+        )
+        icons[icon_index] = renamed_icon
+
+        logger.debug(f"Renamed icon: {old_name} -> {new_name}")
+
+        # Save the updated library
+        metadata = self.create_library(icons, library_path)
+
+        logger.info(f"Successfully renamed icon in library: {library_path}")
+        return metadata, was_overwritten
