@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.1.1] - 2026-02-08
 
+### Fixed
+
+- **Version Display**: Fixed `--version` flag to display the correct SVG2DrawIOLib version (1.1.1) instead of the rich-click library version (1.9.7). The CLI now imports and displays the version from `__about__.py`, which is the single source of truth for the package version.
+
 ### Changed
 
 - **Logging Consistency**: Standardized logging styles across all CLI commands for better consistency and clarity.

@@ -6,6 +6,8 @@ from pathlib import Path
 
 import rich_click as rc
 
+from SVG2DrawIOLib.__about__ import __version__
+
 # Configure rich-click for beautiful, colorful help output
 rc.rich_click.TEXT_MARKUP = "rich"
 rc.rich_click.SHOW_ARGUMENTS = True
@@ -132,7 +134,7 @@ logger = logging.getLogger(__name__)
 
 
 @rc.group()
-@rc.version_option()
+@rc.version_option(version=__version__, prog_name="SVG2DrawIOLib")
 def cli() -> None:
     """SVG2DrawIOLib - Manage DrawIO/diagrams.net shape libraries.
 
