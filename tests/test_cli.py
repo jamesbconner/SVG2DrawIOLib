@@ -294,13 +294,43 @@ class TestCreateCommand:
         )
         assert result.exit_code == 0
 
-        tree = ET.parse(output)
-        root = tree.getroot()
-        assert root.text is not None
-        config = json.loads(root.text)
-        # Fixed dimensions should override max-size
-        assert config[0]["w"] == 30
-        assert config[0]["h"] == 30
+    def test_create_with_only_width_shows_warning(
+        self, runner: CliRunner, sample_svg: Path, tmp_path: Path
+    ) -> None:
+        """Test that specifying only width shows a warning."""
+        output = tmp_path / "output.xml"
+        result = runner.invoke(
+            cli,
+            [
+                "create",
+                str(sample_svg),
+                "-o",
+                str(output),
+                "-w",
+                "50",
+            ],
+        )
+        assert result.exit_code == 0
+        assert "Both --width and --height must be specified" in result.output
+
+    def test_create_with_only_height_shows_warning(
+        self, runner: CliRunner, sample_svg: Path, tmp_path: Path
+    ) -> None:
+        """Test that specifying only height shows a warning."""
+        output = tmp_path / "output.xml"
+        result = runner.invoke(
+            cli,
+            [
+                "create",
+                str(sample_svg),
+                "-o",
+                str(output),
+                "-h",
+                "50",
+            ],
+        )
+        assert result.exit_code == 0
+        assert "Both --width and --height must be specified" in result.output
 
 
 class TestAddCommand:

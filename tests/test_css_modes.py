@@ -13,6 +13,14 @@ from SVG2DrawIOLib.svg_processor import (
 )
 
 
+def get_style_element(root: ET.Element | None) -> ET.Element:
+    """Get style element from SVG root, asserting it exists."""
+    assert root is not None
+    style = root.find(".//{http://www.w3.org/2000/svg}style")
+    assert style is not None
+    return style
+
+
 class TestParseStyleAttribute:
     """Tests for parse_style_attribute helper function."""
 
@@ -54,7 +62,7 @@ class TestGetElementColor:
         """Test extracting color from style attribute."""
         elem = ET.Element("path")
         elem.set("style", "fill:#ff0000")
-        
+
         result = get_element_color(elem, "fill", "#000000")
         assert result == "#ff0000"
 
@@ -62,7 +70,7 @@ class TestGetElementColor:
         """Test extracting color from direct attribute."""
         elem = ET.Element("path")
         elem.set("fill", "#00ff00")
-        
+
         result = get_element_color(elem, "fill", "#000000")
         assert result == "#00ff00"
 
@@ -71,7 +79,7 @@ class TestGetElementColor:
         elem = ET.Element("path")
         elem.set("style", "fill:#ff0000")
         elem.set("fill", "#00ff00")
-        
+
         result = get_element_color(elem, "fill", "#000000")
         assert result == "#ff0000"
 
@@ -79,7 +87,7 @@ class TestGetElementColor:
         """Test extracting stroke color."""
         elem = ET.Element("path")
         elem.set("style", "stroke:#0000ff")
-        
+
         result = get_element_color(elem, "stroke", "#000000")
         assert result == "#0000ff"
 
@@ -87,7 +95,7 @@ class TestGetElementColor:
         """Test that fill='none' returns None."""
         elem = ET.Element("path")
         elem.set("fill", "none")
-        
+
         result = get_element_color(elem, "fill", "#000000")
         assert result is None
 
@@ -95,7 +103,7 @@ class TestGetElementColor:
         """Test that style='fill:none' returns None."""
         elem = ET.Element("path")
         elem.set("style", "fill:none")
-        
+
         result = get_element_color(elem, "fill", "#000000")
         assert result is None
 
@@ -103,7 +111,7 @@ class TestGetElementColor:
         """Test that currentColor is preserved when flag is True."""
         elem = ET.Element("path")
         elem.set("fill", "currentColor")
-        
+
         result = get_element_color(elem, "fill", "#000000", preserve_current_color=True)
         assert result == "currentColor"
 
@@ -111,14 +119,14 @@ class TestGetElementColor:
         """Test that currentColor is replaced when flag is False."""
         elem = ET.Element("path")
         elem.set("fill", "currentColor")
-        
+
         result = get_element_color(elem, "fill", "#000000", preserve_current_color=False)
         assert result == "#000000"
 
     def test_no_color_returns_default(self) -> None:
         """Test that default is returned when no color found."""
         elem = ET.Element("path")
-        
+
         result = get_element_color(elem, "fill", "#123456")
         assert result == "#123456"
 
@@ -141,10 +149,9 @@ class TestCSSModes:
         modified = processor.add_css_classes(tree)
 
         root = modified.getroot()
-        style = root.find(".//{http://www.w3.org/2000/svg}style")
-        assert style is not None
+        style = get_style_element(root)
         style_text = style.text or ""
-        
+
         assert "fill:#ff0000" in style_text
         assert "stroke" not in style_text
 
@@ -163,10 +170,9 @@ class TestCSSModes:
         modified = processor.add_css_classes(tree)
 
         root = modified.getroot()
-        style = root.find(".//{http://www.w3.org/2000/svg}style")
-        assert style is not None
+        style = get_style_element(root)
         style_text = style.text or ""
-        
+
         assert "stroke:#0000ff" in style_text
         assert "fill" not in style_text
 
@@ -185,10 +191,9 @@ class TestCSSModes:
         modified = processor.add_css_classes(tree)
 
         root = modified.getroot()
-        style = root.find(".//{http://www.w3.org/2000/svg}style")
-        assert style is not None
+        style = get_style_element(root)
         style_text = style.text or ""
-        
+
         assert "fill:#ff0000" in style_text
         assert "stroke:#0000ff" in style_text
 
@@ -216,8 +221,7 @@ class TestStyleAttributeParsing:
         modified = processor.add_css_classes(tree)
 
         root = modified.getroot()
-        style = root.find(".//{http://www.w3.org/2000/svg}style")
-        assert style is not None
+        style = get_style_element(root)
         assert "fill:#ff0000" in (style.text or "")
 
     def test_parse_stroke_from_style(self, tmp_path: Path) -> None:
@@ -235,8 +239,7 @@ class TestStyleAttributeParsing:
         modified = processor.add_css_classes(tree)
 
         root = modified.getroot()
-        style = root.find(".//{http://www.w3.org/2000/svg}style")
-        assert style is not None
+        style = get_style_element(root)
         assert "stroke:#0000ff" in (style.text or "")
 
 
@@ -258,6 +261,7 @@ class TestFillNoneHandling:
         modified = processor.add_css_classes(tree)
 
         root = modified.getroot()
+        assert root is not None
         style = root.find(".//{http://www.w3.org/2000/svg}style")
         # No style element should be created since no fill rules generated
         assert style is None or (style.text or "").strip() == ""
@@ -277,10 +281,9 @@ class TestFillNoneHandling:
         modified = processor.add_css_classes(tree)
 
         root = modified.getroot()
-        style = root.find(".//{http://www.w3.org/2000/svg}style")
-        assert style is not None
+        style = get_style_element(root)
         style_text = style.text or ""
-        
+
         # Should have stroke but not fill
         assert "stroke:#0000ff" in style_text
         assert "fill" not in style_text
@@ -304,8 +307,7 @@ class TestCurrentColorHandling:
         modified = processor.add_css_classes(tree)
 
         root = modified.getroot()
-        style = root.find(".//{http://www.w3.org/2000/svg}style")
-        assert style is not None
+        style = get_style_element(root)
         assert "fill:currentColor" in (style.text or "")
 
     def test_current_color_replaced_when_disabled(self, tmp_path: Path) -> None:
@@ -325,10 +327,9 @@ class TestCurrentColorHandling:
         modified = processor.add_css_classes(tree)
 
         root = modified.getroot()
-        style = root.find(".//{http://www.w3.org/2000/svg}style")
-        assert style is not None
+        style = get_style_element(root)
         style_text = style.text or ""
-        
+
         assert "fill:#123456" in style_text
         assert "currentColor" not in style_text
 
@@ -351,8 +352,7 @@ class TestDefaultColors:
         modified = processor.add_css_classes(tree)
 
         root = modified.getroot()
-        style = root.find(".//{http://www.w3.org/2000/svg}style")
-        assert style is not None
+        style = get_style_element(root)
         assert "fill:#abcdef" in (style.text or "")
 
     def test_default_stroke_color_used(self, tmp_path: Path) -> None:
@@ -364,16 +364,13 @@ class TestDefaultColors:
         svg_file = tmp_path / "test.svg"
         svg_file.write_text(svg_content)
 
-        options = SVGProcessingOptions(
-            add_css=True, css_mode="stroke", css_stroke_color="#fedcba"
-        )
+        options = SVGProcessingOptions(add_css=True, css_mode="stroke", css_stroke_color="#fedcba")
         processor = SVGProcessor(options)
         tree = processor.load_svg(svg_file)
         modified = processor.add_css_classes(tree)
 
         root = modified.getroot()
-        style = root.find(".//{http://www.w3.org/2000/svg}style")
-        assert style is not None
+        style = get_style_element(root)
         assert "stroke:#fedcba" in (style.text or "")
 
 
@@ -397,10 +394,9 @@ class TestComplexScenarios:
         modified = processor.add_css_classes(tree)
 
         root = modified.getroot()
-        style = root.find(".//{http://www.w3.org/2000/svg}style")
-        assert style is not None
+        style = get_style_element(root)
         style_text = style.text or ""
-        
+
         # First path: has fill
         assert "fill:#ff0000" in style_text
         # Second path: stroke only (no fill)
@@ -424,9 +420,8 @@ class TestComplexScenarios:
         modified = processor.add_css_classes(tree)
 
         root = modified.getroot()
-        style = root.find(".//{http://www.w3.org/2000/svg}style")
-        assert style is not None
+        style = get_style_element(root)
         style_text = style.text or ""
-        
+
         assert "fill:currentColor" in style_text
         assert "fill:#ff0000" in style_text

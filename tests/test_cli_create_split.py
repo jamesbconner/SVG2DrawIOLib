@@ -313,3 +313,21 @@ class TestCreateSplitByFolder:
 
         # Library should be created in output directory
         assert (output_dir / "lib-Regular.xml").exists()
+
+    def test_split_by_folder_with_processing_error(self, runner: CliRunner, tmp_path: Path) -> None:
+        """Test split-by-folder with invalid SVG that causes processing error."""
+        icons_dir = tmp_path / "icons"
+        regular_dir = icons_dir / "Regular"
+        regular_dir.mkdir(parents=True)
+
+        # Create an invalid SVG file
+        (regular_dir / "invalid.svg").write_text("not valid svg")
+
+        output = tmp_path / "lib.xml"
+
+        result = runner.invoke(
+            cli, ["create", str(icons_dir), "-o", str(output), "-R", "--split-by-folder"]
+        )
+
+        assert result.exit_code != 0
+        assert "Failed to process folder" in result.output
