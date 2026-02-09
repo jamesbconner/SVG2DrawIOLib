@@ -59,8 +59,15 @@ def list(
         logger.info(f"Found {len(icon_names)} icon(s) in library")
 
         # Create a nice table
-        table = Table(title=f"Icons in {library_file.name}", show_header=True)
-        table.add_column("Icon Name", style="cyan")
+        title_text = f"Icons in {library_file.name}"
+        table = Table(title=title_text, show_header=True)
+
+        # Calculate minimum width: max of title length, header length, and longest icon name
+        # Add some padding for table borders and styling
+        max_icon_length = max(len(name) for name in icon_names)
+        min_width = max(len(title_text), len("Icon Name"), max_icon_length)
+
+        table.add_column("Icon Name", style="cyan", min_width=min_width)
 
         for name in sorted(icon_names):
             table.add_row(name)

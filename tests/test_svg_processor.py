@@ -40,7 +40,9 @@ class TestSVGProcessor:
         """Test loading a valid SVG file."""
         tree = processor.load_svg(sample_svg_file)
         assert isinstance(tree, ET.ElementTree)
-        assert tree.getroot().tag == "{http://www.w3.org/2000/svg}svg"
+        root = tree.getroot()
+        assert root is not None
+        assert root.tag == "{http://www.w3.org/2000/svg}svg"
 
     def test_load_svg_file_not_found(self, processor: SVGProcessor, tmp_path: Path) -> None:
         """Test loading a non-existent file."""
@@ -94,6 +96,7 @@ class TestSVGProcessor:
         modified = processor.add_css_classes(tree)
 
         root = modified.getroot()
+        assert root is not None
         paths = list(root.iter("{http://www.w3.org/2000/svg}path"))
         assert len(paths) == 1
         assert paths[0].get("class") == "path0"
@@ -101,7 +104,9 @@ class TestSVGProcessor:
         styles = list(root.iter("{http://www.w3.org/2000/svg}style"))
         assert len(styles) == 1
         # Should preserve original fill color (#000000), not use default (#FF0000)
-        assert ".path0{fill:#000000;}" in styles[0].text
+        style_text = styles[0].text
+        assert style_text is not None
+        assert ".path0{fill:#000000;}" in style_text
 
     def test_add_css_classes_with_multi_class_elements(
         self, processor: SVGProcessor, tmp_path: Path
@@ -120,12 +125,15 @@ class TestSVGProcessor:
         modified = processor.add_css_classes(tree)
 
         root = modified.getroot()
+        assert root is not None
         styles = list(root.iter("{http://www.w3.org/2000/svg}style"))
         assert len(styles) == 1
         # Should use first class only, not create descendant selector
-        assert ".myclass{fill:#ff0000;}" in styles[0].text
+        style_text = styles[0].text
+        assert style_text is not None
+        assert ".myclass{fill:#ff0000;}" in style_text
         # Should NOT create invalid descendant selector
-        assert ".myclass path0" not in styles[0].text
+        assert ".myclass path0" not in style_text
 
     def test_add_css_classes_avoids_duplicate_selectors(
         self, processor: SVGProcessor, tmp_path: Path
@@ -145,12 +153,15 @@ class TestSVGProcessor:
         modified = processor.add_css_classes(tree)
 
         root = modified.getroot()
+        assert root is not None
         styles = list(root.iter("{http://www.w3.org/2000/svg}style"))
         assert len(styles) == 1
         # Should only have one .shape rule (first occurrence)
-        assert styles[0].text.count(".shape{") == 1
+        style_text = styles[0].text
+        assert style_text is not None
+        assert style_text.count(".shape{") == 1
         # Should use the first element's fill color
-        assert ".shape{fill:#ff0000;}" in styles[0].text
+        assert ".shape{fill:#ff0000;}" in style_text
 
     def test_get_svg_dimensions_from_viewbox(
         self, processor: SVGProcessor, sample_svg_file: Path
@@ -255,6 +266,7 @@ class TestSVGProcessor:
 
         # Should not add style element when no matching elements
         root = modified.getroot()
+        assert root is not None
         styles = list(root.iter("{http://www.w3.org/2000/svg}style"))
         assert len(styles) == 0
 
@@ -276,6 +288,7 @@ class TestSVGProcessor:
         modified = processor.add_css_classes(tree)
 
         root = modified.getroot()
+        assert root is not None
         defs = root.find("{http://www.w3.org/2000/svg}defs")
         assert defs is not None
 
@@ -283,7 +296,9 @@ class TestSVGProcessor:
         assert len(defs) >= 1
         first_child = defs[0]
         assert first_child.tag == "{http://www.w3.org/2000/svg}style"
-        assert ".path0{fill:#ff0000;}" in first_child.text
+        first_child_text = first_child.text
+        assert first_child_text is not None
+        assert ".path0{fill:#ff0000;}" in first_child_text
 
     def test_add_css_classes_style_at_top_without_defs(
         self, processor: SVGProcessor, tmp_path: Path
@@ -303,11 +318,14 @@ class TestSVGProcessor:
         modified = processor.add_css_classes(tree)
 
         root = modified.getroot()
+        assert root is not None
         # Style should be first child of root
         assert len(root) >= 1
         first_child = root[0]
         assert first_child.tag == "{http://www.w3.org/2000/svg}style"
-        assert ".path0{fill:#ff0000;}" in first_child.text
+        first_child_text = first_child.text
+        assert first_child_text is not None
+        assert ".path0{fill:#ff0000;}" in first_child_text
 
     def test_get_svg_dimensions_no_root(self, processor: SVGProcessor) -> None:
         """Test get_svg_dimensions with tree that has no root."""
@@ -454,6 +472,7 @@ class TestSVGProcessor:
         adjusted = processor.adjust_svg_viewbox_to_content(tree)
 
         root = adjusted.getroot()
+        assert root is not None
         viewbox = root.get("viewBox")
 
         # ViewBox should be adjusted to remove 10% padding on each side
@@ -469,7 +488,9 @@ class TestSVGProcessor:
         tree = processor.load_svg(sample_svg_file)
 
         adjusted = processor.adjust_svg_viewbox_to_content(tree)
-        new_viewbox = adjusted.getroot().get("viewBox")
+        root = adjusted.getroot()
+        assert root is not None
+        new_viewbox = root.get("viewBox")
 
         # The path in sample_svg_content goes from (10,10) to (90,40)
         # So viewBox should be adjusted to "10.0 10.0 80.0 30.0"
@@ -584,7 +605,9 @@ class TestSVGProcessor:
         adjusted = processor.adjust_svg_viewbox_to_content(tree)
 
         # Should return unchanged when no viewBox
-        assert adjusted.getroot().get("viewBox") is None
+        root = adjusted.getroot()
+        assert root is not None
+        assert root.get("viewBox") is None
 
     def test_adjust_svg_viewbox_invalid_viewbox(
         self, processor: SVGProcessor, tmp_path: Path
@@ -601,7 +624,9 @@ class TestSVGProcessor:
         adjusted = processor.adjust_svg_viewbox_to_content(tree)
 
         # Should return unchanged when viewBox is invalid
-        assert adjusted.getroot().get("viewBox") == "invalid"
+        root = adjusted.getroot()
+        assert root is not None
+        assert root.get("viewBox") == "invalid"
 
     def test_adjust_svg_viewbox_no_content(self, processor: SVGProcessor, tmp_path: Path) -> None:
         """Test adjust_svg_viewbox_to_content when SVG has no drawable content."""
@@ -615,7 +640,9 @@ class TestSVGProcessor:
         adjusted = processor.adjust_svg_viewbox_to_content(tree)
 
         # Should return unchanged when no content found
-        assert adjusted.getroot().get("viewBox") == "0 0 100 100"
+        root = adjusted.getroot()
+        assert root is not None
+        assert root.get("viewBox") == "0 0 100 100"
 
     def test_adjust_svg_viewbox_minimal_padding(
         self, processor: SVGProcessor, tmp_path: Path
@@ -633,7 +660,9 @@ class TestSVGProcessor:
         adjusted = processor.adjust_svg_viewbox_to_content(tree)
 
         # Should be adjusted to remove all padding, no matter how small
-        assert adjusted.getroot().get("viewBox") == "2.0 2.0 96.0 96.0"
+        root = adjusted.getroot()
+        assert root is not None
+        assert root.get("viewBox") == "2.0 2.0 96.0 96.0"
 
     def test_adjust_svg_viewbox_with_rect(self, processor: SVGProcessor, tmp_path: Path) -> None:
         """Test viewBox adjustment with rect elements."""
@@ -648,7 +677,9 @@ class TestSVGProcessor:
         adjusted = processor.adjust_svg_viewbox_to_content(tree)
 
         # Should adjust to rect bounds
-        assert adjusted.getroot().get("viewBox") == "50.0 50.0 100.0 100.0"
+        root = adjusted.getroot()
+        assert root is not None
+        assert root.get("viewBox") == "50.0 50.0 100.0 100.0"
 
     def test_adjust_svg_viewbox_mixed_elements(
         self, processor: SVGProcessor, tmp_path: Path
@@ -671,7 +702,9 @@ class TestSVGProcessor:
         # Rect: (150,150) to (230,230)
         # Path: (200,50) to (250,100)
         # Overall: (60,50) to (250,230) = bounds (60,50,190,180)
-        viewbox = adjusted.getroot().get("viewBox")
+        root = adjusted.getroot()
+        assert root is not None
+        viewbox = root.get("viewBox")
         assert viewbox is not None
         parts = [float(p) for p in viewbox.split()]
         assert parts[0] == 60.0  # min_x
@@ -697,7 +730,9 @@ class TestSVGProcessor:
 
         # Content fills viewBox completely, so viewBox should remain the same
         # (just with float formatting)
-        assert adjusted.getroot().get("viewBox") == "100.0 100.0 50.0 50.0"
+        root = adjusted.getroot()
+        assert root is not None
+        assert root.get("viewBox") == "100.0 100.0 50.0 50.0"
 
     def test_adjust_svg_viewbox_non_zero_origin_with_padding(
         self, processor: SVGProcessor, tmp_path: Path
@@ -716,7 +751,9 @@ class TestSVGProcessor:
         adjusted = processor.adjust_svg_viewbox_to_content(tree)
 
         # Should adjust to remove padding (10px > 5% of 100px)
-        assert adjusted.getroot().get("viewBox") == "110.0 110.0 70.0 70.0"
+        root = adjusted.getroot()
+        assert root is not None
+        assert root.get("viewBox") == "110.0 110.0 70.0 70.0"
 
     def test_calculate_path_bounds_with_h_v_commands(self, processor: SVGProcessor) -> None:
         """Test path bounds with H (horizontal) and V (vertical) commands (Bug #2)."""
@@ -839,7 +876,9 @@ class TestSVGProcessor:
         adjusted = processor.adjust_svg_viewbox_to_content(tree)
 
         # Should clamp to original viewBox bounds
-        viewbox = adjusted.getroot().get("viewBox")
+        root = adjusted.getroot()
+        assert root is not None
+        viewbox = root.get("viewBox")
         assert viewbox is not None
         parts = [float(p) for p in viewbox.split()]
         # Content would be (-10,10) to (80,90), but should clamp to (0,10) to (80,90)
@@ -866,7 +905,10 @@ class TestSVGProcessor:
         # Should clamp to original viewBox (50,50,100,100)
         # Content is (40,40) to (160,160), should clamp to (50,50) to (150,150)
         # With accurate bbox (svgelements), it calculates actual rect bounds more precisely
-        viewbox = adjusted.getroot().get("viewBox")
+        root = adjusted.getroot()
+        assert root is not None
+        viewbox = root.get("viewBox")
+        assert viewbox is not None
         parts = [float(x) for x in viewbox.split()]
         # ViewBox should be clamped to original bounds
         assert parts[0] == 50.0  # min_x clamped to vb_x
@@ -960,7 +1002,9 @@ class TestSVGProcessor:
         adjusted = processor.adjust_svg_viewbox_to_content(tree)
 
         # Should remain unchanged since content is outside viewBox
-        assert adjusted.getroot().get("viewBox") == "0 0 100 100"
+        root = adjusted.getroot()
+        assert root is not None
+        assert root.get("viewBox") == "0 0 100 100"
 
     def test_adjust_svg_viewbox_content_partially_outside(
         self, processor: SVGProcessor, tmp_path: Path
@@ -978,7 +1022,9 @@ class TestSVGProcessor:
         adjusted = processor.adjust_svg_viewbox_to_content(tree)
 
         # Should clamp to viewBox and adjust
-        viewbox = adjusted.getroot().get("viewBox")
+        root = adjusted.getroot()
+        assert root is not None
+        viewbox = root.get("viewBox")
         assert viewbox is not None
         parts = [float(p) for p in viewbox.split()]
         # Content clamped to (0,10) to (50,90)
@@ -1008,7 +1054,9 @@ class TestSVGProcessor:
         adjusted = processor.adjust_svg_viewbox_to_content(tree)
 
         # Should only consider the visible rect (50,50,100,100), not the clipPath rect
-        viewbox = adjusted.getroot().get("viewBox")
+        root = adjusted.getroot()
+        assert root is not None
+        viewbox = root.get("viewBox")
         assert viewbox is not None
         parts = [float(p) for p in viewbox.split()]
         assert parts[0] == 50.0
@@ -1034,7 +1082,9 @@ class TestSVGProcessor:
         adjusted = processor.adjust_svg_viewbox_to_content(tree)
 
         # Should only consider the visible circle (60,60,80,80), not the symbol circle
-        viewbox = adjusted.getroot().get("viewBox")
+        root = adjusted.getroot()
+        assert root is not None
+        viewbox = root.get("viewBox")
         assert viewbox is not None
         parts = [float(p) for p in viewbox.split()]
         assert parts[0] == 60.0
@@ -1042,11 +1092,11 @@ class TestSVGProcessor:
         assert parts[2] == 80.0
         assert parts[3] == 80.0
 
-    def test_adjust_svg_viewbox_skips_transformed_elements(
+    def test_adjust_svg_viewbox_handles_transformed_elements(
         self, processor: SVGProcessor, tmp_path: Path
     ) -> None:
-        """Test that elements with transforms are skipped (Bug #8)."""
-        # SVG with transformed group - conservative approach skips these
+        """Test that elements with transforms are correctly handled by svgelements."""
+        # SVG with transformed group - svgelements can handle transforms correctly
         svg_content = """<?xml version="1.0" encoding="utf-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
     <g transform="translate(50, 50)">
@@ -1060,14 +1110,17 @@ class TestSVGProcessor:
         tree = processor.load_svg(svg_file)
         adjusted = processor.adjust_svg_viewbox_to_content(tree)
 
-        # Should only consider the circle (60,60,80,80), skip transformed rect
-        viewbox = adjusted.getroot().get("viewBox")
+        # Should include both the transformed rect (50,50 to 150,150) and circle (60,60 to 140,140)
+        # Combined bbox: (50,50) to (150,150)
+        root = adjusted.getroot()
+        assert root is not None
+        viewbox = root.get("viewBox")
         assert viewbox is not None
         parts = [float(p) for p in viewbox.split()]
-        assert parts[0] == 60.0
-        assert parts[1] == 60.0
-        assert parts[2] == 80.0
-        assert parts[3] == 80.0
+        assert parts[0] == 50.0  # min_x
+        assert parts[1] == 50.0  # min_y
+        assert parts[2] == 100.0  # width (150 - 50)
+        assert parts[3] == 100.0  # height (150 - 50)
 
     def test_adjust_svg_viewbox_with_mask(self, processor: SVGProcessor, tmp_path: Path) -> None:
         """Test that elements inside <mask> are not included in bounds (Bug #7)."""
@@ -1085,7 +1138,9 @@ class TestSVGProcessor:
         adjusted = processor.adjust_svg_viewbox_to_content(tree)
 
         # Should only consider the visible rect, not the mask rect
-        viewbox = adjusted.getroot().get("viewBox")
+        root = adjusted.getroot()
+        assert root is not None
+        viewbox = root.get("viewBox")
         assert viewbox is not None
         parts = [float(p) for p in viewbox.split()]
         assert parts[0] == 60.0
@@ -1184,7 +1239,9 @@ class TestSVGProcessor:
         adjusted = processor.adjust_svg_viewbox_to_content(tree)
 
         # Should only consider the circle
-        viewbox = adjusted.getroot().get("viewBox")
+        root = adjusted.getroot()
+        assert root is not None
+        viewbox = root.get("viewBox")
         assert viewbox is not None
         parts = [float(p) for p in viewbox.split()]
         assert parts[0] == 60.0
@@ -1209,20 +1266,28 @@ class TestSVGProcessor:
         tree = processor.load_svg(svg_file)
         adjusted = processor.adjust_svg_viewbox_to_content(tree)
 
-        # Should only consider the circle (skip transformed rect)
-        viewbox = adjusted.getroot().get("viewBox")
+        # Should include both the transformed rect and the circle
+        # Rect at (0,0) size (50,50), scaled by 2 = (0,0) size (100,100)
+        # Then translated by (10,10) = (10,10) to (110,110)
+        # Circle at (100,100) r=40 = (60,60) to (140,140)
+        # Combined bbox: (10,10) to (140,140)
+        root = adjusted.getroot()
+        assert root is not None
+        viewbox = root.get("viewBox")
         assert viewbox is not None
         parts = [float(p) for p in viewbox.split()]
-        assert parts[0] == 60.0
-        assert parts[1] == 60.0
+        assert parts[0] == 10.0  # min_x
+        assert parts[1] == 10.0  # min_y
+        assert parts[2] == 130.0  # width (140 - 10)
+        assert parts[3] == 130.0  # height (140 - 10)
 
     def test_adjust_svg_viewbox_element_with_direct_transform(
         self, processor: SVGProcessor, tmp_path: Path
     ) -> None:
-        """Test that elements with direct transform attribute are skipped."""
+        """Test that elements with direct transform attribute are handled correctly."""
         svg_content = """<?xml version="1.0" encoding="utf-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
-    <rect x="50" y="50" width="100" height="100" transform="rotate(45)" fill="#000000"/>
+    <rect x="50" y="50" width="100" height="100" transform="rotate(45 100 100)" fill="#000000"/>
     <circle cx="100" cy="100" r="30" fill="#000000"/>
 </svg>"""
         svg_file = tmp_path / "direct_transform.svg"
@@ -1231,14 +1296,21 @@ class TestSVGProcessor:
         tree = processor.load_svg(svg_file)
         adjusted = processor.adjust_svg_viewbox_to_content(tree)
 
-        # Should only consider the circle (skip transformed rect)
-        viewbox = adjusted.getroot().get("viewBox")
+        # Should include both the rotated rect and the circle
+        # The rotated rect will have a larger bbox than the original
+        # Circle is (70,70) to (130,130)
+        # Rotated 100x100 rect around (100,100) will extend beyond the circle
+        root = adjusted.getroot()
+        assert root is not None
+        viewbox = root.get("viewBox")
         assert viewbox is not None
         parts = [float(p) for p in viewbox.split()]
-        assert parts[0] == 70.0
-        assert parts[1] == 70.0
-        assert parts[2] == 60.0
-        assert parts[3] == 60.0
+        # The rotated rect should extend to roughly (29,29) to (171,171)
+        # Allow some tolerance
+        assert parts[0] <= 30.0  # min_x
+        assert parts[1] <= 30.0  # min_y
+        assert parts[2] >= 140.0  # width
+        assert parts[3] >= 140.0  # height
 
     def test_get_svg_dimensions_invalid_width_value(
         self, processor: SVGProcessor, tmp_path: Path
@@ -1353,7 +1425,9 @@ class TestSVGProcessor:
         adjusted = processor.adjust_svg_viewbox_to_content(tree)
 
         # Should only consider the visible path
-        viewbox = adjusted.getroot().get("viewBox")
+        root = adjusted.getroot()
+        assert root is not None
+        viewbox = root.get("viewBox")
         assert viewbox is not None
         parts = [float(p) for p in viewbox.split()]
         assert parts[0] == 50.0
@@ -1379,7 +1453,9 @@ class TestSVGProcessor:
         adjusted = processor.adjust_svg_viewbox_to_content(tree)
 
         # Should only consider the visible circle
-        viewbox = adjusted.getroot().get("viewBox")
+        root = adjusted.getroot()
+        assert root is not None
+        viewbox = root.get("viewBox")
         assert viewbox is not None
         parts = [float(p) for p in viewbox.split()]
         assert parts[0] == 60.0
@@ -1405,7 +1481,9 @@ class TestSVGProcessor:
         adjusted = processor.adjust_svg_viewbox_to_content(tree)
 
         # Should only consider the visible rect
-        viewbox = adjusted.getroot().get("viewBox")
+        root = adjusted.getroot()
+        assert root is not None
+        viewbox = root.get("viewBox")
         assert viewbox is not None
         parts = [float(p) for p in viewbox.split()]
         assert parts[0] == 60.0
@@ -1431,7 +1509,9 @@ class TestSVGProcessor:
         adjusted = processor.adjust_svg_viewbox_to_content(tree)
 
         # Should only consider the visible circle
-        viewbox = adjusted.getroot().get("viewBox")
+        root = adjusted.getroot()
+        assert root is not None
+        viewbox = root.get("viewBox")
         assert viewbox is not None
         parts = [float(p) for p in viewbox.split()]
         assert parts[0] == 60.0
@@ -1451,7 +1531,10 @@ class TestSVGProcessor:
         tree = processor.load_svg(svg_file)
         adjusted = processor.adjust_svg_viewbox_to_content(tree)
 
-        viewbox = adjusted.getroot().get("viewBox")
+        root = adjusted.getroot()
+        assert root is not None
+        viewbox = root.get("viewBox")
+        assert viewbox is not None
         parts = [float(x) for x in viewbox.split()]
         assert parts[0] == 70.0  # cx - rx
         assert parts[1] == 80.0  # cy - ry
@@ -1470,7 +1553,10 @@ class TestSVGProcessor:
         tree = processor.load_svg(svg_file)
         adjusted = processor.adjust_svg_viewbox_to_content(tree)
 
-        viewbox = adjusted.getroot().get("viewBox")
+        root = adjusted.getroot()
+        assert root is not None
+        viewbox = root.get("viewBox")
+        assert viewbox is not None
         parts = [float(x) for x in viewbox.split()]
         assert parts[0] == 50.0  # min(x1, x2)
         assert parts[1] == 60.0  # min(y1, y2)
@@ -1491,7 +1577,10 @@ class TestSVGProcessor:
         tree = processor.load_svg(svg_file)
         adjusted = processor.adjust_svg_viewbox_to_content(tree)
 
-        viewbox = adjusted.getroot().get("viewBox")
+        root = adjusted.getroot()
+        assert root is not None
+        viewbox = root.get("viewBox")
+        assert viewbox is not None
         parts = [float(x) for x in viewbox.split()]
         assert parts[0] == 50.0  # min x
         assert parts[1] == 40.0  # min y
@@ -1510,7 +1599,10 @@ class TestSVGProcessor:
         tree = processor.load_svg(svg_file)
         adjusted = processor.adjust_svg_viewbox_to_content(tree)
 
-        viewbox = adjusted.getroot().get("viewBox")
+        root = adjusted.getroot()
+        assert root is not None
+        viewbox = root.get("viewBox")
+        assert viewbox is not None
         parts = [float(x) for x in viewbox.split()]
         assert parts[0] == 50.0  # min x
         assert parts[1] == 50.0  # min y
@@ -1533,7 +1625,10 @@ class TestSVGProcessor:
         tree = processor.load_svg(svg_file)
         adjusted = processor.adjust_svg_viewbox_to_content(tree)
 
-        viewbox = adjusted.getroot().get("viewBox")
+        root = adjusted.getroot()
+        assert root is not None
+        viewbox = root.get("viewBox")
+        assert viewbox is not None
         parts = [float(x) for x in viewbox.split()]
         # Should encompass all elements
         assert parts[0] == 50.0  # min x from polyline
@@ -1558,7 +1653,10 @@ class TestSVGProcessor:
         tree = processor.load_svg(svg_file)
         adjusted = processor.adjust_svg_viewbox_to_content(tree)
 
-        viewbox = adjusted.getroot().get("viewBox")
+        root = adjusted.getroot()
+        assert root is not None
+        viewbox = root.get("viewBox")
+        assert viewbox is not None
         parts = [float(x) for x in viewbox.split()]
         # Should only consider rect, not ellipse in defs
         assert parts[0] == 60.0
@@ -1569,7 +1667,7 @@ class TestSVGProcessor:
     def test_adjust_svg_viewbox_line_with_transform(
         self, processor: SVGProcessor, tmp_path: Path
     ) -> None:
-        """Test that line with transform is skipped (Bug #9 + Bug #8)."""
+        """Test that line with transform is handled correctly."""
         svg_content = """<?xml version="1.0" encoding="utf-8"?>
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
             <g transform="translate(50,50)">
@@ -1583,13 +1681,19 @@ class TestSVGProcessor:
         tree = processor.load_svg(svg_file)
         adjusted = processor.adjust_svg_viewbox_to_content(tree)
 
-        viewbox = adjusted.getroot().get("viewBox")
+        root = adjusted.getroot()
+        assert root is not None
+        viewbox = root.get("viewBox")
+        assert viewbox is not None
         parts = [float(x) for x in viewbox.split()]
-        # Should only consider rect, not transformed line
-        assert parts[0] == 60.0
-        assert parts[1] == 60.0
-        assert parts[2] == 80.0
-        assert parts[3] == 80.0
+        # Should include both transformed line and rect
+        # Line: (10,10) to (100,100) translated by (50,50) = (60,60) to (150,150)
+        # Rect: (60,60) to (140,140)
+        # Combined: (60,60) to (150,150)
+        assert parts[0] == 60.0  # min_x
+        assert parts[1] == 60.0  # min_y
+        assert parts[2] == 90.0  # width (150 - 60)
+        assert parts[3] == 90.0  # height (150 - 60)
 
     def test_adjust_svg_viewbox_polyline_comma_separated(
         self, processor: SVGProcessor, tmp_path: Path
@@ -1605,7 +1709,10 @@ class TestSVGProcessor:
         tree = processor.load_svg(svg_file)
         adjusted = processor.adjust_svg_viewbox_to_content(tree)
 
-        viewbox = adjusted.getroot().get("viewBox")
+        root = adjusted.getroot()
+        assert root is not None
+        viewbox = root.get("viewBox")
+        assert viewbox is not None
         parts = [float(x) for x in viewbox.split()]
         assert parts[0] == 50.0
         assert parts[1] == 40.0
@@ -1627,7 +1734,10 @@ class TestSVGProcessor:
         tree = processor.load_svg(svg_file)
         adjusted = processor.adjust_svg_viewbox_to_content(tree)
 
-        viewbox = adjusted.getroot().get("viewBox")
+        root = adjusted.getroot()
+        assert root is not None
+        viewbox = root.get("viewBox")
+        assert viewbox is not None
         parts = [float(x) for x in viewbox.split()]
         # Should only consider rect
         assert parts[0] == 60.0
@@ -1719,7 +1829,9 @@ class TestSVGProcessor:
         tree = processor.load_svg(svg_file)
 
         # Mock svgelements to raise an exception
-        def mock_parse(*args, **kwargs):
+        from typing import Any
+
+        def mock_parse(*args: Any, **kwargs: Any) -> None:
             raise RuntimeError("Mock error")
 
         import svgelements
@@ -1749,7 +1861,9 @@ class TestSVGProcessor:
         before_count = len(glob.glob(os.path.join(temp_dir, "*.svg")))
 
         # Mock write to raise an exception
-        def mock_write(*args, **kwargs):
+        from typing import Any
+
+        def mock_write(*args: Any, **kwargs: Any) -> None:
             raise OSError("Mock write error")
 
         monkeypatch.setattr(tree, "write", mock_write)
@@ -1776,10 +1890,11 @@ class TestSVGProcessor:
 
         # Mock the import to raise ImportError
         import builtins
+        from typing import Any
 
         original_import = builtins.__import__
 
-        def mock_import(name, *args, **kwargs):
+        def mock_import(name: str, *args: Any, **kwargs: Any) -> Any:
             if name == "svgelements":
                 raise ImportError("svgelements not installed")
             return original_import(name, *args, **kwargs)
@@ -1804,7 +1919,9 @@ class TestSVGProcessor:
         tree = processor.load_svg(svg_file)
 
         # Mock _adjust_viewbox_with_svgelements to raise an exception
-        def mock_adjust(*args, **kwargs):
+        from typing import Any
+
+        def mock_adjust(*args: Any, **kwargs: Any) -> None:
             raise RuntimeError("Mock error")
 
         monkeypatch.setattr(processor, "_adjust_viewbox_with_svgelements", mock_adjust)
@@ -1835,7 +1952,7 @@ class TestSVGProcessor:
     def test_adjust_viewbox_with_svgelements_with_transforms(
         self, processor: SVGProcessor, tmp_path: Path
     ) -> None:
-        """Test that SVGs with transforms fall back to manual calculation."""
+        """Test that SVGs with transforms are handled correctly by svgelements."""
         svg_content = """<?xml version="1.0" encoding="utf-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50">
     <g transform="translate(10, 10)">
@@ -1846,14 +1963,15 @@ class TestSVGProcessor:
         svg_file.write_text(svg_content)
         tree = processor.load_svg(svg_file)
 
-        # Should return None to trigger fallback
+        # Should handle transforms correctly and return adjusted tree
         result = processor._adjust_viewbox_with_svgelements(tree)
-        assert result is None
+        assert result is not None
+        assert isinstance(result, ET.ElementTree)
 
     def test_adjust_viewbox_with_svgelements_with_defs(
         self, processor: SVGProcessor, tmp_path: Path
     ) -> None:
-        """Test that SVGs with defs fall back to manual calculation."""
+        """Test that SVGs with defs are handled correctly (defs excluded from bbox)."""
         svg_content = """<?xml version="1.0" encoding="utf-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50">
     <defs>
@@ -1865,9 +1983,10 @@ class TestSVGProcessor:
         svg_file.write_text(svg_content)
         tree = processor.load_svg(svg_file)
 
-        # Should return None to trigger fallback
+        # Should handle defs correctly (exclude from bbox) and return adjusted tree
         result = processor._adjust_viewbox_with_svgelements(tree)
-        assert result is None
+        assert result is not None
+        assert isinstance(result, ET.ElementTree)
 
     def test_calculate_path_bounds_with_no_current_command(self, processor: SVGProcessor) -> None:
         """Test path bounds when coordinates appear before any command."""
@@ -1891,7 +2010,10 @@ class TestSVGProcessor:
 
         # Force manual fallback by using a transform
         root = tree.getroot()
-        root.find(".//{http://www.w3.org/2000/svg}path").set("transform", "scale(1)")
+        assert root is not None
+        path = root.find(".//{http://www.w3.org/2000/svg}path")
+        assert path is not None
+        path.set("transform", "scale(1)")
 
         result = processor.adjust_svg_viewbox_to_content(tree)
         # Should return original tree when no viewBox
@@ -2019,6 +2141,7 @@ class TestSVGProcessor:
         result = processor.adjust_svg_viewbox_to_content(tree)
         assert result is not None
         root = result.getroot()
+        assert root is not None
         viewbox = root.get("viewBox")
         assert viewbox is not None
         # Ellipse bounds: cx-rx to cx+rx, cy-ry to cy+ry = 20,30 to 80,70
@@ -2043,6 +2166,7 @@ class TestSVGProcessor:
         result = processor.adjust_svg_viewbox_to_content(tree)
         assert result is not None
         root = result.getroot()
+        assert root is not None
         viewbox = root.get("viewBox")
         assert viewbox is not None
         parts = [float(x) for x in viewbox.split()]
@@ -2066,6 +2190,7 @@ class TestSVGProcessor:
         result = processor.adjust_svg_viewbox_to_content(tree)
         assert result is not None
         root = result.getroot()
+        assert root is not None
         viewbox = root.get("viewBox")
         assert viewbox is not None
         parts = [float(x) for x in viewbox.split()]
@@ -2089,6 +2214,7 @@ class TestSVGProcessor:
         result = processor.adjust_svg_viewbox_to_content(tree)
         assert result is not None
         root = result.getroot()
+        assert root is not None
         viewbox = root.get("viewBox")
         assert viewbox is not None
         parts = [float(x) for x in viewbox.split()]
@@ -2115,6 +2241,7 @@ class TestSVGProcessor:
         result = processor.adjust_svg_viewbox_to_content(tree)
         assert result is not None
         root = result.getroot()
+        assert root is not None
         viewbox = root.get("viewBox")
         assert viewbox is not None
         # Should encompass all shapes
@@ -2141,6 +2268,7 @@ class TestSVGProcessor:
         processor.add_css_classes(tree)
 
         root = tree.getroot()
+        assert root is not None
         paths = list(root.iter("{http://www.w3.org/2000/svg}path"))
         assert len(paths) == 2
 

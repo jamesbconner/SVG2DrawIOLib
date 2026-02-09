@@ -5,6 +5,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-02-08
+
+### Added
+
+- **Improved ViewBox Adjustment with Transforms**: Significantly improved viewBox adjustment accuracy for SVGs with transforms. The svgelements-based bbox calculation now correctly handles transformed elements (translate, scale, rotate, skew, matrix) while still excluding non-rendering containers (defs, clipPath, mask, symbol, pattern, marker). This reduces unnecessary padding in many real-world icons that use transforms, which are common in exported SVGs. The manual fallback still conservatively skips transforms for compatibility.
+- **Enhanced CSS Injection**: Significantly improved CSS class generation for color editing in DrawIO with support for real-world SVG authoring patterns:
+  - **CSS Modes**: New `--css-mode` option with three modes:
+    - `fill` (default): Generate CSS rules for fill colors only
+    - `stroke`: Generate CSS rules for stroke colors only
+    - `both`: Generate CSS rules for both fill and stroke colors
+  - **Style Attribute Parsing**: Now parses `style="fill:#fff;stroke:#000"` attributes in addition to direct `fill` and `stroke` attributes
+  - **fill="none" Handling**: Properly respects `fill="none"` and `stroke="none"` - no longer forces colors on stroke-only or fill-only paths
+  - **currentColor Support**: New `--preserve-current-color` flag (default: true) to preserve `currentColor` values for theme-aware icons
+  - **Default Stroke Color**: New `--css-stroke-color` option to set default stroke color (used with `--css-mode stroke` or `both`)
+  - Available in both `create` and `add` commands
+  - Makes split-paths workflow more consistently colorable in DrawIO
+- **Extract Command**: New `extract` CLI command for extracting icons from DrawIO libraries back to individual SVG files. This is the inverse operation of `create`, allowing users to recover SVG files from library files. Supports extracting all icons or specific icons by name, with optional overwrite functionality.
+- **Rename Command**: New `rename` CLI command for renaming icons within a DrawIO library. Allows renaming a single icon while preserving its content. Supports optional `--overwrite` flag to replace an existing icon with the new name.
+- **Inspect Command**: New `inspect` CLI command for displaying detailed information about icons in a DrawIO library. Shows dimensions, shape type, CSS classes, and inline styles for each icon. Supports inspecting all icons or specific icons by name, with optional `--show-svg` flag to display the decoded SVG content. Includes `--json` flag for machine-readable JSON output.
+- **Validate Command**: New `validate` CLI command for comprehensive validation of DrawIO library files. Validates XML structure, JSON format, icon integrity (required fields, dimensions, base64 encoding, compression), mxGraphModel structure, and SVG content (namespace, viewBox/dimensions, empty SVG detection). Provides detailed error and warning messages with color-coded status output. Includes `LibraryValidator` service class following SOLID principles for separation of concerns.
+- **CLI Command Groups**: Reorganized CLI commands into three logical groups for better discoverability: Library Management Commands (create, add, remove, extract, rename), Library Inspection Commands (list, inspect, validate), and SVG Processing Commands (split-paths).
+- **Split by Folder**: New `--split-by-folder` flag for `create` command that creates separate library files for each subdirectory when used with `--recursive`. Output filename is modified with subdirectory name (e.g., `FontAwesome.xml` becomes `FontAwesome-Regular.xml`, `FontAwesome-Solid.xml`, `FontAwesome-Brands.xml`). This is useful for organizing icon sets that are already grouped by category in the filesystem.
+
+### Changed
+
+- **Refactored CLI Commands**: Improved separation of concerns following SOLID principles. Business logic has been extracted from CLI commands into reusable service classes:
+  - Created `IconAnalyzer` service for extracting and analyzing icon content (used by `extract` and `inspect` commands)
+  - Added `LibraryManager.rename_icon()` method for icon renaming logic (used by `rename` command)
+  - CLI commands are now thin orchestration layers that delegate to service classes
+  - All business logic is now testable independently of the CLI layer
+- **Test Organization**: Improved test file organization for consistency. Each CLI command now has its own dedicated test file (`test_cli_extract.py`, `test_cli_rename.py`, etc.) following the same pattern as other command tests.
+
+### Fixed
+
+- **List Command Table Width**: Fixed table width calculation in `list` command to prevent title text wrapping. The table now properly sizes to accommodate whichever is wider: the title text, column header, or icon names. This ensures clean, readable output regardless of filename or icon name length.
+- **Type Checking Configuration**: Fixed mypy configuration inconsistency between local pre-commit and GitHub CI. Removed CLI directory exclusion from local pre-commit config and added tests directory to both local and CI mypy checks. All 107 type errors across test files have been resolved with proper type annotations and assertions. Both local and CI environments now run `mypy --strict src tests` consistently.
+
 ## [1.1.2] - 2026-02-08
 
 ### Fixed

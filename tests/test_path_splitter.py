@@ -299,7 +299,10 @@ class TestPathSplitter:
         output = tmp_path / "output.svg"
 
         # Mock _find_parent to return None
-        def mock_find_parent(*args, **kwargs):
+        import xml.etree.ElementTree as ET
+        from typing import Any
+
+        def mock_find_parent(*args: Any, **kwargs: Any) -> ET.Element | None:
             return None
 
         monkeypatch.setattr(splitter, "_find_parent", mock_find_parent)
@@ -322,7 +325,9 @@ class TestPathSplitter:
         output = tmp_path / "output.svg"
 
         # Mock as_subpaths to raise an exception
-        def mock_as_subpaths(*args, **kwargs):
+        from typing import Any
+
+        def mock_as_subpaths(*args: Any, **kwargs: Any) -> None:
             raise RuntimeError("Test exception during subpath extraction")
 
         # We need to patch the Path class's as_subpaths method
@@ -351,14 +356,18 @@ class TestPathSplitter:
         path2 = svgelements.Path("M60,60 L90,90 Z")
 
         # Mock bbox to raise exception for first path
+        from typing import Any, cast
+
         original_bbox = svgelements.Path.bbox
         call_count = [0]
 
-        def mock_bbox(self):
+        def mock_bbox(self: Any) -> tuple[float, float, float, float]:
             call_count[0] += 1
             if call_count[0] == 1:
                 raise RuntimeError("Test bbox exception")
-            return original_bbox(self)
+            result = original_bbox(self)
+            assert result is not None
+            return cast(tuple[float, float, float, float], result)
 
         svgelements.Path.bbox = mock_bbox
 
@@ -378,10 +387,12 @@ class TestPathSplitter:
         path2 = svgelements.Path("M60,60 L90,90 Z")
 
         # Manually create the paths_with_bbox structure with None
+        from typing import Any
+
         paths_with_bbox = [(path1, None), (path2, (60, 60, 90, 90))]
 
         # Test the sorting logic - paths with None bbox should have area -1
-        def get_area(item):
+        def get_area(item: tuple[Any, tuple[float, float, float, float] | None]) -> float:
             _, bbox = item
             if bbox is None:
                 return -1.0
@@ -444,14 +455,18 @@ class TestPathSplitter:
         path2 = svgelements.Path("M60,60 L90,90 Z")
 
         # Mock bbox to return None for first path (without raising exception)
+        from typing import Any, cast
+
         original_bbox = svgelements.Path.bbox
         call_count = [0]
 
-        def mock_bbox(self):
+        def mock_bbox(self: Any) -> tuple[float, float, float, float]:
             call_count[0] += 1
             if call_count[0] == 1:
-                return None  # Return None without exception
-            return original_bbox(self)
+                return None  # type: ignore[return-value]
+            result = original_bbox(self)
+            assert result is not None
+            return cast(tuple[float, float, float, float], result)
 
         svgelements.Path.bbox = mock_bbox
 
@@ -464,7 +479,7 @@ class TestPathSplitter:
             svgelements.Path.bbox = original_bbox
 
     def test_split_paths_preserves_original_on_exception(
-        self, splitter: PathSplitter, tmp_path: Path
+        self, splitter: PathSplitter, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Test that original path is preserved if exception occurs during split."""
         svg_content = """<?xml version="1.0" encoding="utf-8"?>
@@ -476,37 +491,35 @@ class TestPathSplitter:
         output = tmp_path / "output.svg"
 
         # Mock the group creation to raise an exception
+        from typing import Any
+
         original_group_method = splitter._group_paths_with_holes
 
-        def mock_group_paths_with_holes(subpaths):
+        def mock_group_paths_with_holes(subpaths: Any) -> Any:
             # Call original to get groups
             _ = original_group_method(subpaths)
             # But then raise an exception to simulate failure during processing
             raise RuntimeError("Test exception during path processing")
 
-        splitter._group_paths_with_holes = mock_group_paths_with_holes
+        monkeypatch.setattr(splitter, "_group_paths_with_holes", mock_group_paths_with_holes)
 
-        try:
-            result = splitter.split_svg_paths(svg_file, output)
-            assert result is not None
+        result = splitter.split_svg_paths(svg_file, output)
+        assert result is not None
 
-            # Parse output and verify original path is still present
-            import xml.etree.ElementTree as ET
+        # Parse output and verify original path is still present
+        import xml.etree.ElementTree as ET
 
-            tree = ET.parse(output)
-            root = tree.getroot()
-            paths = list(root.iter("{http://www.w3.org/2000/svg}path"))
+        tree = ET.parse(output)
+        root = tree.getroot()
+        paths = list(root.iter("{http://www.w3.org/2000/svg}path"))
 
-            # Should have exactly 1 path (the original, unsplit)
-            assert len(paths) == 1, f"Expected 1 path (original), got {len(paths)}"
+        # Should have exactly 1 path (the original, unsplit)
+        assert len(paths) == 1, f"Expected 1 path (original), got {len(paths)}"
 
-            # The original path should still have BOTH subpaths in its d attribute
-            original_path = paths[0]
-            d_attr = original_path.get("d", "")
-            # Both M commands should be present in the original compound path
-            assert "M10,10" in d_attr and "M60,60" in d_attr, (
-                f"Original compound path should have both subpaths, got: {d_attr}"
-            )
-
-        finally:
-            splitter._group_paths_with_holes = original_group_method
+        # The original path should still have BOTH subpaths in its d attribute
+        original_path = paths[0]
+        d_attr = original_path.get("d", "")
+        # Both M commands should be present in the original compound path
+        assert "M10,10" in d_attr and "M60,60" in d_attr, (
+            f"Original compound path should have both subpaths, got: {d_attr}"
+        )

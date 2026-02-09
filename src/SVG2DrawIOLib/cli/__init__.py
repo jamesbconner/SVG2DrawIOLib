@@ -47,11 +47,31 @@ rc.rich_click.COMMAND_GROUPS = {
     "SVG2DrawIOLib": [
         {
             "name": "Library Management Commands",
-            "commands": ["create", "add", "remove", "list"],
+            "commands": [
+                "create",
+                "add",
+                "remove",
+                "extract",
+                "rename",
+            ],
             "table_styles": {
                 "show_lines": True,
                 "row_styles": ["none"],
                 "border_style": "blue",
+                "box": "ROUNDED",
+            },
+        },
+        {
+            "name": "Library Inspection Commands",
+            "commands": [
+                "list",
+                "inspect",
+                "validate",
+            ],
+            "table_styles": {
+                "show_lines": True,
+                "row_styles": ["none"],
+                "border_style": "cyan",
                 "box": "ROUNDED",
             },
         },
@@ -81,11 +101,19 @@ rc.rich_click.OPTION_GROUPS = {
         },
         {
             "name": "Styling Options",
-            "options": ["--css", "--css-color", "--namespace", "--tag"],
+            "options": [
+                "--css",
+                "--css-color",
+                "--css-mode",
+                "--css-stroke-color",
+                "--preserve-current-color",
+                "--namespace",
+                "--tag",
+            ],
         },
         {
             "name": "General Options",
-            "options": ["--recursive", "--verbose", "--quiet", "--help"],
+            "options": ["--recursive", "--split-by-folder", "--verbose", "--quiet", "--help"],
         },
     ],
     "SVG2DrawIOLib add": [
@@ -99,7 +127,13 @@ rc.rich_click.OPTION_GROUPS = {
         },
         {
             "name": "Styling Options",
-            "options": ["--css"],
+            "options": [
+                "--css",
+                "--css-color",
+                "--css-mode",
+                "--css-stroke-color",
+                "--preserve-current-color",
+            ],
         },
         {
             "name": "General Options",
