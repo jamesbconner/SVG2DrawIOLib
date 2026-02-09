@@ -310,5 +310,6 @@ class TestInspectCommand:
 
         data = json.loads(result.output)
 
-        assert data["total"] == 0
+        assert data["total_icons"] == 0
+        assert data["inspected_count"] == 0
         assert data["icons"] == []

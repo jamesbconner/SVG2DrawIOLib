@@ -97,10 +97,14 @@ class LibraryValidator:
 
                 if icon_issues:
                     results["icon_issues"].extend(icon_issues)
-                    results["checks"]["icons_failed"] += 1
-                    # Don't mark as invalid for warnings, only errors
-                    if any(issue["severity"] == "error" for issue in icon_issues):
+                    # Check if there are any errors (not just warnings)
+                    has_errors = any(issue["severity"] == "error" for issue in icon_issues)
+                    if has_errors:
+                        results["checks"]["icons_failed"] += 1
                         results["valid"] = False
+                    else:
+                        # Only warnings - still count as validated
+                        results["checks"]["icons_validated"] += 1
                 else:
                     results["checks"]["icons_validated"] += 1
 

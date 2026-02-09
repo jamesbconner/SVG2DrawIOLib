@@ -39,39 +39,13 @@ class IconAnalyzer:
         Raises:
             ValueError: If the data cannot be decompressed or parsed.
         """
-        try:
-            # Decode base64
-            compressed = base64.b64decode(xml_data)
+        # Delegate to extract_details and return only the SVG content
+        svg_content, _ = self.extract_details(xml_data)
 
-            # Decompress using raw DEFLATE (wbits=-15)
-            decompressed = zlib.decompress(compressed, wbits=-15)
-
-            # Parse mxGraphModel XML
-            root = ET.fromstring(decompressed)  # nosec B314 - User-provided library file
-
-            # Find the data URI in the mxCell style attribute
-            for cell in root.iter("mxCell"):
-                style = cell.get("style", "")
-                if "image=data:image/svg+xml," in style:
-                    # Extract the data URI
-                    match = re.search(r"image=data:image/svg\+xml,([^;]+)", style)
-                    if match:
-                        # The SVG is base64 encoded in the data URI
-                        encoded_svg = match.group(1)
-                        svg_bytes = base64.b64decode(encoded_svg)
-                        svg_content = svg_bytes.decode("utf-8")
-                        return svg_content
-
+        if not svg_content:
             raise ValueError("No SVG data URI found in mxGraphModel")
 
-        except binascii.Error as e:
-            raise ValueError(f"Failed to decode base64: {e}") from e
-        except zlib.error as e:
-            raise ValueError(f"Failed to decompress icon data: {e}") from e
-        except ET.ParseError as e:
-            raise ValueError(f"Failed to parse mxGraphModel XML: {e}") from e
-        except UnicodeDecodeError as e:
-            raise ValueError(f"Failed to decode SVG UTF-8: {e}") from e
+        return svg_content
 
     def extract_details(self, xml_data: bytes) -> tuple[str, IconStyleInfo]:
         """Extract SVG content and style information from icon data.

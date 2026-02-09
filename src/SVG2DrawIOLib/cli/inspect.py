@@ -101,7 +101,16 @@ def inspect(
         if not icons_list:
             logger.info("Library is empty")
             if output_json:
-                print(json.dumps({"icons": [], "total": 0, "library": str(library)}))
+                print(
+                    json.dumps(
+                        {
+                            "library": str(library),
+                            "total_icons": 0,
+                            "inspected_count": 0,
+                            "icons": [],
+                        }
+                    )
+                )
             else:
                 console.print(f"[yellow]Library is empty:[/yellow] {library}")
             return

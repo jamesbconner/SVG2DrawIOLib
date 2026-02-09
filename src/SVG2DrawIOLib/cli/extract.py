@@ -6,7 +6,7 @@ from pathlib import Path
 import rich_click as rc
 from rich.console import Console
 
-from SVG2DrawIOLib.cli.helpers import setup_logging
+from SVG2DrawIOLib.cli.helpers import safe_path_join, setup_logging
 from SVG2DrawIOLib.icon_analyzer import IconAnalyzer
 from SVG2DrawIOLib.library_manager import LibraryManager
 
@@ -128,7 +128,7 @@ def extract(
         skipped_count = 0
 
         for icon in icons:
-            output_path = output_dir / f"{icon.name}.svg"
+            output_path = safe_path_join(output_dir, f"{icon.name}.svg")
 
             try:
                 # Extract icon to file
