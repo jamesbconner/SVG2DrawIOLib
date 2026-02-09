@@ -43,7 +43,7 @@ class TestViewBoxImprovements:
         viewbox = root.get("viewBox")
         assert viewbox is not None
         parts = [float(p) for p in viewbox.split()]
-        
+
         # Should only include the transformed rect: (50,50) to (100,100)
         assert parts[0] == 50.0  # min_x
         assert parts[1] == 50.0  # min_y
@@ -76,7 +76,7 @@ class TestViewBoxImprovements:
         viewbox = root.get("viewBox")
         assert viewbox is not None
         parts = [float(p) for p in viewbox.split()]
-        
+
         # Scaled rect: (25*2, 25*2) to (50*2, 50*2) = (50,50) to (100,100)
         assert parts[0] == 50.0  # min_x
         assert parts[1] == 50.0  # min_y
@@ -109,7 +109,7 @@ class TestViewBoxImprovements:
         viewbox = root.get("viewBox")
         assert viewbox is not None
         parts = [float(p) for p in viewbox.split()]
-        
+
         # Rotated circle should still be roughly (80,80) to (120,120)
         # Allow some tolerance for rotation calculations
         assert 75.0 <= parts[0] <= 85.0  # min_x
@@ -143,7 +143,7 @@ class TestViewBoxImprovements:
         viewbox = root.get("viewBox")
         assert viewbox is not None
         parts = [float(p) for p in viewbox.split()]
-        
+
         # Translated rect: (60,60) to (100,100)
         assert parts[0] == 60.0  # min_x
         assert parts[1] == 60.0  # min_y
@@ -176,7 +176,7 @@ class TestViewBoxImprovements:
         viewbox = root.get("viewBox")
         assert viewbox is not None
         parts = [float(p) for p in viewbox.split()]
-        
+
         # Scaled rect: (40*1.5, 40*1.5) to (60*1.5, 60*1.5) = (60,60) to (90,90)
         assert parts[0] == 60.0  # min_x
         assert parts[1] == 60.0  # min_y
@@ -209,7 +209,7 @@ class TestViewBoxImprovements:
         viewbox = root.get("viewBox")
         assert viewbox is not None
         parts = [float(p) for p in viewbox.split()]
-        
+
         # Translated line: (70,70) to (90,90)
         # The key is that the marker path (0,0 to 1000,1000) should NOT be included
         assert parts[0] == 70.0  # min_x
@@ -217,9 +217,7 @@ class TestViewBoxImprovements:
         assert parts[2] == 20.0  # width
         assert parts[3] == 20.0  # height
 
-    def test_viewbox_complex_transforms(
-        self, processor: SVGProcessor, tmp_path: Path
-    ) -> None:
+    def test_viewbox_complex_transforms(self, processor: SVGProcessor, tmp_path: Path) -> None:
         """Test complex nested transforms are handled correctly."""
         svg_content = """<?xml version="1.0" encoding="utf-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
@@ -245,7 +243,7 @@ class TestViewBoxImprovements:
         viewbox = root.get("viewBox")
         assert viewbox is not None
         parts = [float(p) for p in viewbox.split()]
-        
+
         # Nested transforms: translate(50,50) then scale(2) on rect at (20,20) size (10,10)
         # Result: (50 + 20*2, 50 + 20*2) to (50 + 30*2, 50 + 30*2) = (90,90) to (110,110)
         assert parts[0] == 90.0  # min_x

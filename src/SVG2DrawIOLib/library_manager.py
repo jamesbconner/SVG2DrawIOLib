@@ -319,16 +319,6 @@ class LibraryManager:
         if not new_name.strip():
             raise ValueError("New name cannot be empty")
 
-        if old_name == new_name:
-            logger.warning("Old and new names are identical, no changes made")
-            # Return current metadata without changes
-            icons = self.load_library(library_path)
-            return LibraryMetadata(
-                name=library_path.stem,
-                icon_count=len(icons),
-                source_files=[],
-            ), False
-
         # Load library
         icons = self.load_library(library_path)
 
@@ -346,6 +336,16 @@ class LibraryManager:
 
         if icon_to_rename is None:
             raise ValueError(f"Icon '{old_name}' not found in library")
+
+        # Check if old and new names are identical (after validating icon exists)
+        if old_name == new_name:
+            logger.warning("Old and new names are identical, no changes made")
+            # Return current metadata without changes
+            return LibraryMetadata(
+                name=library_path.stem,
+                icon_count=len(icons),
+                source_files=[],
+            ), False
 
         # Check if new name already exists
         existing_icon_index = -1

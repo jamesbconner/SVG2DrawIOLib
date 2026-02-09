@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+import pytest
+
 from SVG2DrawIOLib.cli.create_helpers import (
     collect_svg_files,
     determine_sizing_strategy,
@@ -101,8 +103,10 @@ class TestGroupFilesByFolder:
         assert tmp_path.name in result
         assert file1 in result[tmp_path.name]
 
-    def test_group_files_not_relative_to_base(self, tmp_path: Path) -> None:
-        """Test grouping files not relative to any base directory."""
+    def test_group_files_not_relative_to_base(
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Test grouping files not relative to any base directory logs warning."""
         other_dir = tmp_path / "other"
         other_dir.mkdir()
         file1 = other_dir / "icon1.svg"
@@ -111,10 +115,16 @@ class TestGroupFilesByFolder:
         base_dir = tmp_path / "base"
         base_dir.mkdir()
 
-        result = group_files_by_folder([file1], [base_dir])
+        import logging
+
+        with caplog.at_level(logging.WARNING):
+            result = group_files_by_folder([file1], [base_dir])
 
         # File not relative to base_dir, should not be grouped
         assert len(result) == 0
+        # Should log a warning about skipped files
+        assert "Skipped 1 file(s)" in caplog.text
+        assert str(file1) in caplog.text
 
 
 class TestDetermineSizingStrategy:

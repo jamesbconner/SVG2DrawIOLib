@@ -232,10 +232,10 @@ class TestManualFallbackWithTransforms:
         options = SVGProcessingOptions()
         processor = SVGProcessor(options)
         tree = processor.load_svg(svg_file)
-        
+
         # Force manual fallback by making svgelements fail
         monkeypatch.setattr(processor, "_adjust_viewbox_with_svgelements", lambda x: None)
-        
+
         adjusted = processor.adjust_svg_viewbox_to_content(tree)
 
         # Should only consider rect, not transformed circle
@@ -264,10 +264,10 @@ class TestManualFallbackWithTransforms:
         options = SVGProcessingOptions()
         processor = SVGProcessor(options)
         tree = processor.load_svg(svg_file)
-        
+
         # Force manual fallback by making svgelements fail
         monkeypatch.setattr(processor, "_adjust_viewbox_with_svgelements", lambda x: None)
-        
+
         adjusted = processor.adjust_svg_viewbox_to_content(tree)
 
         # Should only consider circle, not transformed rect
@@ -296,10 +296,10 @@ class TestManualFallbackWithTransforms:
         options = SVGProcessingOptions()
         processor = SVGProcessor(options)
         tree = processor.load_svg(svg_file)
-        
+
         # Force manual fallback by making svgelements fail
         monkeypatch.setattr(processor, "_adjust_viewbox_with_svgelements", lambda x: None)
-        
+
         adjusted = processor.adjust_svg_viewbox_to_content(tree)
 
         # Should only consider rect, not transformed ellipse
@@ -327,10 +327,10 @@ class TestManualFallbackWithTransforms:
         options = SVGProcessingOptions()
         processor = SVGProcessor(options)
         tree = processor.load_svg(svg_file)
-        
+
         # Force manual fallback by making svgelements fail
         monkeypatch.setattr(processor, "_adjust_viewbox_with_svgelements", lambda x: None)
-        
+
         adjusted = processor.adjust_svg_viewbox_to_content(tree)
 
         # Should only consider rect, not transformed line
@@ -358,10 +358,10 @@ class TestManualFallbackWithTransforms:
         options = SVGProcessingOptions()
         processor = SVGProcessor(options)
         tree = processor.load_svg(svg_file)
-        
+
         # Force manual fallback by making svgelements fail
         monkeypatch.setattr(processor, "_adjust_viewbox_with_svgelements", lambda x: None)
-        
+
         adjusted = processor.adjust_svg_viewbox_to_content(tree)
 
         # Should only consider rect, not transformed polyline
@@ -389,10 +389,10 @@ class TestManualFallbackWithTransforms:
         options = SVGProcessingOptions()
         processor = SVGProcessor(options)
         tree = processor.load_svg(svg_file)
-        
+
         # Force manual fallback by making svgelements fail
         monkeypatch.setattr(processor, "_adjust_viewbox_with_svgelements", lambda x: None)
-        
+
         adjusted = processor.adjust_svg_viewbox_to_content(tree)
 
         # Should only consider rect, not transformed polygon
@@ -423,10 +423,10 @@ class TestManualFallbackWithTransforms:
         options = SVGProcessingOptions()
         processor = SVGProcessor(options)
         tree = processor.load_svg(svg_file)
-        
+
         # Force manual fallback by making svgelements fail
         monkeypatch.setattr(processor, "_adjust_viewbox_with_svgelements", lambda x: None)
-        
+
         adjusted = processor.adjust_svg_viewbox_to_content(tree)
 
         # Should only consider the rect outside the transformed group

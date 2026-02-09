@@ -60,11 +60,17 @@ def group_files_by_folder(
 
     Returns:
         Dictionary mapping folder names to lists of SVG files.
+
+    Note:
+        Files not relative to any base_dir are silently skipped.
+        This is intentional for --split-by-folder mode.
     """
     folder_groups: dict[str, list[Path]] = defaultdict(list)
+    skipped_files: list[Path] = []
 
     for svg_file in svg_files:
         # Find which base_dir this file belongs to
+        matched = False
         for base_dir in base_dirs:
             try:
                 relative = svg_file.relative_to(base_dir)
@@ -75,10 +81,22 @@ def group_files_by_folder(
                 else:
                     # File is directly in base_dir, use base_dir name
                     folder_groups[base_dir.name].append(svg_file)
+                matched = True
                 break
             except ValueError:
                 # Not relative to this base_dir, try next
                 continue
+
+        if not matched:
+            skipped_files.append(svg_file)
+
+    # Log warning if files were skipped
+    if skipped_files:
+        logger.warning(
+            f"Skipped {len(skipped_files)} file(s) not relative to any base directory: "
+            f"{', '.join(str(f) for f in skipped_files[:3])}"
+            + (f" and {len(skipped_files) - 3} more" if len(skipped_files) > 3 else "")
+        )
 
     return dict(folder_groups)
 

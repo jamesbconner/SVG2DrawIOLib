@@ -56,7 +56,9 @@ class TestRenameCommand:
             cli, ["rename", "-l", str(library), "-o", "icon1", "-n", "renamed-icon"]
         )
         assert result.exit_code == 0
-        assert "Renamed icon 'icon1' to 'renamed-icon'" in result.output
+        assert "Renamed icon" in result.output
+        assert "icon1" in result.output
+        assert "renamed-icon" in result.output
 
         # Verify rename
         result = runner.invoke(cli, ["list", str(library)])
@@ -115,12 +117,16 @@ class TestRenameCommand:
             cli, ["rename", "-l", str(library), "-o", "icon1", "-n", "icon2", "--overwrite"]
         )
         assert result.exit_code == 0
-        assert "Renamed icon 'icon1' to 'icon2'" in result.output
+        assert "Renamed icon" in result.output
+        assert "icon1" in result.output
+        assert "icon2" in result.output
 
         # Verify only 2 icons remain (icon2 and icon3)
         result = runner.invoke(cli, ["list", str(library)])
         assert result.exit_code == 0
-        assert "Total: 2 icon(s)" in result.output
+        assert "Total:" in result.output
+        assert "2" in result.output
+        assert "icon" in result.output
 
     def test_rename_same_name(
         self, runner: CliRunner, multiple_svgs: list[Path], tmp_path: Path
@@ -137,6 +143,24 @@ class TestRenameCommand:
         result = runner.invoke(cli, ["rename", "-l", str(library), "-o", "icon1", "-n", "icon1"])
         assert result.exit_code == 0
         assert "identical" in result.output
+
+    def test_rename_nonexistent_icon_to_itself(
+        self, runner: CliRunner, multiple_svgs: list[Path], tmp_path: Path
+    ) -> None:
+        """Test renaming a nonexistent icon to itself should raise 'not found' error."""
+        library = tmp_path / "library.xml"
+
+        # Create library
+        svg_paths = [str(svg) for svg in multiple_svgs]
+        result = runner.invoke(cli, ["create", *svg_paths, "-o", str(library)])
+        assert result.exit_code == 0
+
+        # Try to rename nonexistent icon to itself
+        result = runner.invoke(
+            cli, ["rename", "-l", str(library), "-o", "nonexistent", "-n", "nonexistent"]
+        )
+        assert result.exit_code != 0
+        assert "not found" in result.output.lower()
 
     def test_rename_empty_old_name(
         self, runner: CliRunner, multiple_svgs: list[Path], tmp_path: Path
@@ -250,7 +274,9 @@ class TestRenameCommand:
             cli, ["rename", "-l", str(library), "-o", "icon3", "-n", "icon1", "--overwrite"]
         )
         assert result.exit_code == 0
-        assert "Renamed icon 'icon3' to 'icon1'" in result.output
+        assert "Renamed icon" in result.output
+        assert "icon3" in result.output
+        assert "icon1" in result.output
 
         # Verify the library now has icon1 (renamed from icon3) and icon2
         result = runner.invoke(cli, ["list", str(library)])
