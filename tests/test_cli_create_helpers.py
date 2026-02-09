@@ -2,8 +2,6 @@
 
 from pathlib import Path
 
-import pytest
-
 from SVG2DrawIOLib.cli.create_helpers import (
     collect_svg_files,
     determine_sizing_strategy,

@@ -120,7 +120,9 @@ class TestCreateSplitByFolder:
 
         output = tmp_path / "lib.xml"
 
-        result = runner.invoke(cli, ["create", str(icons_dir), "-o", str(output), "--split-by-folder"])
+        result = runner.invoke(
+            cli, ["create", str(icons_dir), "-o", str(output), "--split-by-folder"]
+        )
 
         assert result.exit_code != 0
         assert "--split-by-folder requires --recursive" in result.output
