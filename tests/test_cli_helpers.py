@@ -2,8 +2,6 @@
 
 from pathlib import Path
 
-import pytest
-
 from SVG2DrawIOLib.cli.helpers import safe_path_join, sanitize_filename
 
 
