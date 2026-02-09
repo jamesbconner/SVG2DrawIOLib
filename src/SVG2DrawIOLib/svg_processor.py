@@ -489,8 +489,10 @@ class SVGProcessor:
     def _adjust_viewbox_with_svgelements(self, svg_tree: ET.ElementTree) -> ET.ElementTree | None:
         """Adjust viewBox using svgelements library for accurate bbox calculation.
 
-        This uses svgelements which provides bbox calculation matching browser behavior,
-        but applies our filtering logic to skip non-rendering elements.
+        This uses svgelements which provides bbox calculation matching browser behavior.
+        Non-rendering containers (defs, clipPath, mask, symbol, pattern, marker) are
+        removed before bbox calculation to avoid inflating bounds with definition elements.
+        Transforms are handled correctly by svgelements.
 
         Args:
             svg_tree: The SVG ElementTree to adjust.
@@ -501,30 +503,11 @@ class SVGProcessor:
         Raises:
             ImportError: If svgelements is not installed.
         """
-        # For elements that need special handling (defs, transforms, etc.),
-        # fall back to manual calculation to maintain consistent behavior
         root = svg_tree.getroot()
         if root is None:
             return None
 
-        # Check if SVG has elements that need filtering
-        parent_map = {c: p for p in root.iter() for c in p}
-        has_filtered_elements = False
-
-        for elem in root.iter():
-            if self._is_in_non_rendering_container(elem, parent_map):
-                has_filtered_elements = True
-                break
-            if self._element_has_transform(elem, parent_map):
-                has_filtered_elements = True
-                break
-
-        # If we have elements that need filtering, use manual calculation
-        # to maintain consistent behavior with our filtering logic
-        if has_filtered_elements:
-            logger.debug("SVG has filtered elements, using manual bbox calculation")
-            return None
-
+        import copy
         import tempfile
 
         import svgelements
@@ -543,7 +526,34 @@ class SVGProcessor:
             vb_width = float(parts[2])
             vb_height = float(parts[3])
 
-            # Write SVG to temp file for svgelements to parse
+            # Create a copy of the tree to modify for bbox calculation
+            # This preserves the original tree
+            temp_tree = copy.deepcopy(svg_tree)
+            temp_root = temp_tree.getroot()
+            if temp_root is None:
+                return None
+
+            # Remove non-rendering container elements before bbox calculation
+            # These are definition elements that shouldn't affect the visible bounds
+            non_rendering_tags = {"defs", "clipPath", "mask", "symbol", "pattern", "marker"}
+
+            # Find and remove non-rendering containers
+            # We need to handle both namespaced and non-namespaced tags
+            for elem in list(temp_root.iter()):
+                tag = elem.tag
+                # Remove namespace if present
+                if "}" in tag:
+                    tag = tag.split("}", 1)[1]
+
+                if tag in non_rendering_tags:
+                    # Find parent and remove this element
+                    for parent in temp_root.iter():
+                        if elem in parent:
+                            parent.remove(elem)
+                            logger.debug(f"Removed <{tag}> element for bbox calculation")
+                            break
+
+            # Write modified SVG to temp file for svgelements to parse
             # Initialize temp_path before the with block to ensure cleanup works
             temp_path = None
             try:
@@ -551,7 +561,7 @@ class SVGProcessor:
                     mode="w", suffix=".svg", delete=False, encoding="utf-8"
                 ) as f:
                     temp_path = f.name
-                    svg_tree.write(f, encoding="unicode", xml_declaration=True)
+                    temp_tree.write(f, encoding="unicode", xml_declaration=True)
 
                 # Parse with svgelements
                 svg = svgelements.SVG.parse(temp_path)
@@ -576,7 +586,7 @@ class SVGProcessor:
                         logger.debug("Content outside viewBox bounds, skipping adjustment")
                         return None
 
-                    # Update viewBox and dimensions
+                    # Update viewBox and dimensions on the ORIGINAL tree
                     root.set(
                         "viewBox",
                         f"{content_min_x} {content_min_y} {content_width} {content_height}",

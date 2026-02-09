@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Improved ViewBox Adjustment with Transforms**: Significantly improved viewBox adjustment accuracy for SVGs with transforms. The svgelements-based bbox calculation now correctly handles transformed elements (translate, scale, rotate, skew, matrix) while still excluding non-rendering containers (defs, clipPath, mask, symbol, pattern, marker). This reduces unnecessary padding in many real-world icons that use transforms, which are common in exported SVGs. The manual fallback still conservatively skips transforms for compatibility.
 - **Enhanced CSS Injection**: Significantly improved CSS class generation for color editing in DrawIO with support for real-world SVG authoring patterns:
   - **CSS Modes**: New `--css-mode` option with three modes:
     - `fill` (default): Generate CSS rules for fill colors only

@@ -1092,11 +1092,11 @@ class TestSVGProcessor:
         assert parts[2] == 80.0
         assert parts[3] == 80.0
 
-    def test_adjust_svg_viewbox_skips_transformed_elements(
+    def test_adjust_svg_viewbox_handles_transformed_elements(
         self, processor: SVGProcessor, tmp_path: Path
     ) -> None:
-        """Test that elements with transforms are skipped (Bug #8)."""
-        # SVG with transformed group - conservative approach skips these
+        """Test that elements with transforms are correctly handled by svgelements."""
+        # SVG with transformed group - svgelements can handle transforms correctly
         svg_content = """<?xml version="1.0" encoding="utf-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
     <g transform="translate(50, 50)">
@@ -1110,16 +1110,17 @@ class TestSVGProcessor:
         tree = processor.load_svg(svg_file)
         adjusted = processor.adjust_svg_viewbox_to_content(tree)
 
-        # Should only consider the circle (60,60,80,80), skip transformed rect
+        # Should include both the transformed rect (50,50 to 150,150) and circle (60,60 to 140,140)
+        # Combined bbox: (50,50) to (150,150)
         root = adjusted.getroot()
         assert root is not None
         viewbox = root.get("viewBox")
         assert viewbox is not None
         parts = [float(p) for p in viewbox.split()]
-        assert parts[0] == 60.0
-        assert parts[1] == 60.0
-        assert parts[2] == 80.0
-        assert parts[3] == 80.0
+        assert parts[0] == 50.0  # min_x
+        assert parts[1] == 50.0  # min_y
+        assert parts[2] == 100.0  # width (150 - 50)
+        assert parts[3] == 100.0  # height (150 - 50)
 
     def test_adjust_svg_viewbox_with_mask(self, processor: SVGProcessor, tmp_path: Path) -> None:
         """Test that elements inside <mask> are not included in bounds (Bug #7)."""
@@ -1265,22 +1266,28 @@ class TestSVGProcessor:
         tree = processor.load_svg(svg_file)
         adjusted = processor.adjust_svg_viewbox_to_content(tree)
 
-        # Should only consider the circle (skip transformed rect)
+        # Should include both the transformed rect and the circle
+        # Rect at (0,0) size (50,50), scaled by 2 = (0,0) size (100,100)
+        # Then translated by (10,10) = (10,10) to (110,110)
+        # Circle at (100,100) r=40 = (60,60) to (140,140)
+        # Combined bbox: (10,10) to (140,140)
         root = adjusted.getroot()
         assert root is not None
         viewbox = root.get("viewBox")
         assert viewbox is not None
         parts = [float(p) for p in viewbox.split()]
-        assert parts[0] == 60.0
-        assert parts[1] == 60.0
+        assert parts[0] == 10.0  # min_x
+        assert parts[1] == 10.0  # min_y
+        assert parts[2] == 130.0  # width (140 - 10)
+        assert parts[3] == 130.0  # height (140 - 10)
 
     def test_adjust_svg_viewbox_element_with_direct_transform(
         self, processor: SVGProcessor, tmp_path: Path
     ) -> None:
-        """Test that elements with direct transform attribute are skipped."""
+        """Test that elements with direct transform attribute are handled correctly."""
         svg_content = """<?xml version="1.0" encoding="utf-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
-    <rect x="50" y="50" width="100" height="100" transform="rotate(45)" fill="#000000"/>
+    <rect x="50" y="50" width="100" height="100" transform="rotate(45 100 100)" fill="#000000"/>
     <circle cx="100" cy="100" r="30" fill="#000000"/>
 </svg>"""
         svg_file = tmp_path / "direct_transform.svg"
@@ -1289,16 +1296,21 @@ class TestSVGProcessor:
         tree = processor.load_svg(svg_file)
         adjusted = processor.adjust_svg_viewbox_to_content(tree)
 
-        # Should only consider the circle (skip transformed rect)
+        # Should include both the rotated rect and the circle
+        # The rotated rect will have a larger bbox than the original
+        # Circle is (70,70) to (130,130)
+        # Rotated 100x100 rect around (100,100) will extend beyond the circle
         root = adjusted.getroot()
         assert root is not None
         viewbox = root.get("viewBox")
         assert viewbox is not None
         parts = [float(p) for p in viewbox.split()]
-        assert parts[0] == 70.0
-        assert parts[1] == 70.0
-        assert parts[2] == 60.0
-        assert parts[3] == 60.0
+        # The rotated rect should extend to roughly (29,29) to (171,171)
+        # Allow some tolerance
+        assert parts[0] <= 30.0  # min_x
+        assert parts[1] <= 30.0  # min_y
+        assert parts[2] >= 140.0  # width
+        assert parts[3] >= 140.0  # height
 
     def test_get_svg_dimensions_invalid_width_value(
         self, processor: SVGProcessor, tmp_path: Path
@@ -1655,7 +1667,7 @@ class TestSVGProcessor:
     def test_adjust_svg_viewbox_line_with_transform(
         self, processor: SVGProcessor, tmp_path: Path
     ) -> None:
-        """Test that line with transform is skipped (Bug #9 + Bug #8)."""
+        """Test that line with transform is handled correctly."""
         svg_content = """<?xml version="1.0" encoding="utf-8"?>
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
             <g transform="translate(50,50)">
@@ -1674,11 +1686,14 @@ class TestSVGProcessor:
         viewbox = root.get("viewBox")
         assert viewbox is not None
         parts = [float(x) for x in viewbox.split()]
-        # Should only consider rect, not transformed line
-        assert parts[0] == 60.0
-        assert parts[1] == 60.0
-        assert parts[2] == 80.0
-        assert parts[3] == 80.0
+        # Should include both transformed line and rect
+        # Line: (10,10) to (100,100) translated by (50,50) = (60,60) to (150,150)
+        # Rect: (60,60) to (140,140)
+        # Combined: (60,60) to (150,150)
+        assert parts[0] == 60.0  # min_x
+        assert parts[1] == 60.0  # min_y
+        assert parts[2] == 90.0  # width (150 - 60)
+        assert parts[3] == 90.0  # height (150 - 60)
 
     def test_adjust_svg_viewbox_polyline_comma_separated(
         self, processor: SVGProcessor, tmp_path: Path
@@ -1937,7 +1952,7 @@ class TestSVGProcessor:
     def test_adjust_viewbox_with_svgelements_with_transforms(
         self, processor: SVGProcessor, tmp_path: Path
     ) -> None:
-        """Test that SVGs with transforms fall back to manual calculation."""
+        """Test that SVGs with transforms are handled correctly by svgelements."""
         svg_content = """<?xml version="1.0" encoding="utf-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50">
     <g transform="translate(10, 10)">
@@ -1948,14 +1963,15 @@ class TestSVGProcessor:
         svg_file.write_text(svg_content)
         tree = processor.load_svg(svg_file)
 
-        # Should return None to trigger fallback
+        # Should handle transforms correctly and return adjusted tree
         result = processor._adjust_viewbox_with_svgelements(tree)
-        assert result is None
+        assert result is not None
+        assert isinstance(result, ET.ElementTree)
 
     def test_adjust_viewbox_with_svgelements_with_defs(
         self, processor: SVGProcessor, tmp_path: Path
     ) -> None:
-        """Test that SVGs with defs fall back to manual calculation."""
+        """Test that SVGs with defs are handled correctly (defs excluded from bbox)."""
         svg_content = """<?xml version="1.0" encoding="utf-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50">
     <defs>
@@ -1967,9 +1983,10 @@ class TestSVGProcessor:
         svg_file.write_text(svg_content)
         tree = processor.load_svg(svg_file)
 
-        # Should return None to trigger fallback
+        # Should handle defs correctly (exclude from bbox) and return adjusted tree
         result = processor._adjust_viewbox_with_svgelements(tree)
-        assert result is None
+        assert result is not None
+        assert isinstance(result, ET.ElementTree)
 
     def test_calculate_path_bounds_with_no_current_command(self, processor: SVGProcessor) -> None:
         """Test path bounds when coordinates appear before any command."""
