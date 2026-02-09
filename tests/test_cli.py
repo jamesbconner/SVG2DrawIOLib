@@ -86,6 +86,7 @@ class TestCreateCommand:
         root = tree.getroot()
         assert root.tag == "mxlibrary"
 
+        assert root.text is not None
         config = json.loads(root.text)
         assert len(config) == 1
         assert config[0]["title"] == "test_icon"
@@ -102,7 +103,9 @@ class TestCreateCommand:
         assert output.exists()
 
         tree = ET.parse(output)
-        config = json.loads(tree.getroot().text)
+        root = tree.getroot()
+        assert root.text is not None
+        config = json.loads(root.text)
         assert len(config) == 3
 
         titles = {item["title"] for item in config}
@@ -120,7 +123,9 @@ class TestCreateCommand:
         assert result.exit_code == 0
 
         tree = ET.parse(output)
-        config = json.loads(tree.getroot().text)
+        root = tree.getroot()
+        assert root.text is not None
+        config = json.loads(root.text)
         # After viewBox adjustment, aspect ratio changes from 100x50 to 80x30
         # (path bounds are 10,10 to 90,40), so max 64 gives 64x24
         assert config[0]["w"] == 64
@@ -138,7 +143,9 @@ class TestCreateCommand:
         assert result.exit_code == 0
 
         tree = ET.parse(output)
-        config = json.loads(tree.getroot().text)
+        root = tree.getroot()
+        assert root.text is not None
+        config = json.loads(root.text)
         assert config[0]["w"] == 50
         assert config[0]["h"] == 50
 
@@ -167,7 +174,9 @@ class TestCreateCommand:
         assert output.exists()
 
         tree = ET.parse(output)
-        config = json.loads(tree.getroot().text)
+        root = tree.getroot()
+        assert root.text is not None
+        config = json.loads(root.text)
         assert len(config) == 3
 
     def test_create_from_directory_recursive(self, runner: CliRunner, tmp_path: Path) -> None:
@@ -191,7 +200,9 @@ class TestCreateCommand:
         result = runner.invoke(cli, ["create", str(icons_dir), "-o", str(output)])
         assert result.exit_code == 0
         tree = ET.parse(output)
-        config = json.loads(tree.getroot().text)
+        root = tree.getroot()
+        assert root.text is not None
+        config = json.loads(root.text)
         assert len(config) == 1
 
         # With recursive, should find both
@@ -199,7 +210,9 @@ class TestCreateCommand:
         result = runner.invoke(cli, ["create", str(icons_dir), "-o", str(output2), "--recursive"])
         assert result.exit_code == 0
         tree = ET.parse(output2)
-        config = json.loads(tree.getroot().text)
+        root = tree.getroot()
+        assert root.text is not None
+        config = json.loads(root.text)
         assert len(config) == 2
 
     def test_create_no_svg_files_found(self, runner: CliRunner, tmp_path: Path) -> None:
@@ -232,7 +245,9 @@ class TestCreateCommand:
         assert result.exit_code == 0
 
         tree = ET.parse(output)
-        config = json.loads(tree.getroot().text)
+        root = tree.getroot()
+        assert root.text is not None
+        config = json.loads(root.text)
         assert len(config) == 1
         assert config[0]["title"] == "icon"
 
@@ -280,7 +295,9 @@ class TestCreateCommand:
         assert result.exit_code == 0
 
         tree = ET.parse(output)
-        config = json.loads(tree.getroot().text)
+        root = tree.getroot()
+        assert root.text is not None
+        config = json.loads(root.text)
         # Fixed dimensions should override max-size
         assert config[0]["w"] == 30
         assert config[0]["h"] == 30
@@ -313,7 +330,9 @@ class TestAddCommand:
 
         # Verify
         tree = ET.parse(library)
-        config = json.loads(tree.getroot().text)
+        root = tree.getroot()
+        assert root.text is not None
+        config = json.loads(root.text)
         assert len(config) == 3
 
     def test_add_skip_duplicates(
@@ -332,7 +351,9 @@ class TestAddCommand:
 
         # Should still have only 1 icon
         tree = ET.parse(library)
-        config = json.loads(tree.getroot().text)
+        root = tree.getroot()
+        assert root.text is not None
+        config = json.loads(root.text)
         assert len(config) == 1
 
     def test_add_replace_duplicates(
@@ -351,7 +372,9 @@ class TestAddCommand:
 
         # Should still have 1 icon
         tree = ET.parse(library)
-        config = json.loads(tree.getroot().text)
+        root = tree.getroot()
+        assert root.text is not None
+        config = json.loads(root.text)
         assert len(config) == 1
 
     def test_add_from_directory(
@@ -371,7 +394,9 @@ class TestAddCommand:
 
         # Verify all icons are present
         tree = ET.parse(library)
-        config = json.loads(tree.getroot().text)
+        root = tree.getroot()
+        assert root.text is not None
+        config = json.loads(root.text)
         assert len(config) == 3
 
     def test_add_with_fixed_dimensions(
@@ -392,7 +417,9 @@ class TestAddCommand:
 
         # Verify dimensions
         tree = ET.parse(library)
-        config = json.loads(tree.getroot().text)
+        root = tree.getroot()
+        assert root.text is not None
+        config = json.loads(root.text)
         assert len(config) == 2
         # The second icon should have 80x80 dimensions
         icon2 = [item for item in config if item["title"] == "icon2"][0]
@@ -487,7 +514,9 @@ class TestAddCommand:
 
         # Verify dimensions
         tree = ET.parse(library)
-        config = json.loads(tree.getroot().text)
+        root = tree.getroot()
+        assert root.text is not None
+        config = json.loads(root.text)
         assert len(config) == 2
 
     def test_add_with_max_size_and_fixed_dimensions(
@@ -519,7 +548,9 @@ class TestAddCommand:
 
         # Verify fixed dimensions were used
         tree = ET.parse(library)
-        config = json.loads(tree.getroot().text)
+        root = tree.getroot()
+        assert root.text is not None
+        config = json.loads(root.text)
         icon2 = [item for item in config if item["title"] == "icon2"][0]
         assert icon2["w"] == 25
         assert icon2["h"] == 25
@@ -551,7 +582,9 @@ class TestAddCommand:
         assert result.exit_code == 0
 
         tree = ET.parse(library)
-        config = json.loads(tree.getroot().text)
+        root = tree.getroot()
+        assert root.text is not None
+        config = json.loads(root.text)
         assert len(config) == 3  # icon0 + icon1 + icon2
 
 
@@ -581,7 +614,9 @@ class TestRemoveCommand:
 
         # Verify
         tree = ET.parse(library)
-        config = json.loads(tree.getroot().text)
+        root = tree.getroot()
+        assert root.text is not None
+        config = json.loads(root.text)
         assert len(config) == 2
         titles = {item["title"] for item in config}
         assert "icon2" not in titles
@@ -603,7 +638,9 @@ class TestRemoveCommand:
 
         # Verify
         tree = ET.parse(library)
-        config = json.loads(tree.getroot().text)
+        root = tree.getroot()
+        assert root.text is not None
+        config = json.loads(root.text)
         assert len(config) == 1
         assert config[0]["title"] == "icon2"
 
@@ -724,9 +761,11 @@ class TestCreateCommandEdgeCases:
         self, runner: CliRunner, sample_svg: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Test create command handles KeyboardInterrupt gracefully."""
+        from typing import Any
+
         from SVG2DrawIOLib.svg_processor import SVGProcessor
 
-        def mock_process(*args, **kwargs):
+        def mock_process(*args: Any, **kwargs: Any) -> None:
             raise KeyboardInterrupt()
 
         monkeypatch.setattr(SVGProcessor, "process_svg_file", mock_process)
@@ -741,9 +780,11 @@ class TestCreateCommandEdgeCases:
         self, runner: CliRunner, sample_svg: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Test create command with unexpected error in verbose mode."""
+        from typing import Any
+
         from SVG2DrawIOLib.svg_processor import SVGProcessor
 
-        def mock_process(*args, **kwargs):
+        def mock_process(*args: Any, **kwargs: Any) -> None:
             raise RuntimeError("Unexpected error")
 
         monkeypatch.setattr(SVGProcessor, "process_svg_file", mock_process)
@@ -793,6 +834,8 @@ class TestAddCommandEdgeCases:
         self, runner: CliRunner, sample_svg: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Test add command with unexpected error in verbose mode."""
+        from typing import Any
+
         library = tmp_path / "library.xml"
 
         # Create initial library
@@ -801,7 +844,7 @@ class TestAddCommandEdgeCases:
 
         from SVG2DrawIOLib.svg_processor import SVGProcessor
 
-        def mock_process(*args, **kwargs):
+        def mock_process(*args: Any, **kwargs: Any) -> None:
             raise RuntimeError("Unexpected error")
 
         monkeypatch.setattr(SVGProcessor, "process_svg_file", mock_process)
@@ -826,7 +869,9 @@ class TestAddCommandEdgeCases:
 
         # Verify test_icon_2 was created
         tree = ET.parse(library)
-        config = json.loads(tree.getroot().text)
+        root = tree.getroot()
+        assert root.text is not None
+        config = json.loads(root.text)
         titles = [item["title"] for item in config]
         assert "test_icon" in titles
         assert "test_icon_2" in titles
@@ -839,6 +884,8 @@ class TestRemoveCommandEdgeCases:
         self, runner: CliRunner, sample_svg: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Test remove command with unexpected error in verbose mode."""
+        from typing import Any
+
         library = tmp_path / "library.xml"
 
         # Create initial library
@@ -847,7 +894,7 @@ class TestRemoveCommandEdgeCases:
 
         from SVG2DrawIOLib.library_manager import LibraryManager
 
-        def mock_remove(*args, **kwargs):
+        def mock_remove(*args: Any, **kwargs: Any) -> None:
             raise RuntimeError("Unexpected error")
 
         monkeypatch.setattr(LibraryManager, "remove_icons_from_library", mock_remove)
@@ -883,6 +930,8 @@ class TestListCommandEdgeCases:
         self, runner: CliRunner, sample_svg: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Test list command with unexpected error in verbose mode."""
+        from typing import Any
+
         library = tmp_path / "library.xml"
 
         # Create initial library
@@ -891,7 +940,7 @@ class TestListCommandEdgeCases:
 
         from SVG2DrawIOLib.library_manager import LibraryManager
 
-        def mock_list(*args, **kwargs):
+        def mock_list(*args: Any, **kwargs: Any) -> None:
             raise RuntimeError("Unexpected error")
 
         monkeypatch.setattr(LibraryManager, "list_icons", mock_list)
@@ -962,9 +1011,11 @@ class TestSplitPathsCommand:
         output_svg = tmp_path / "output.svg"
 
         # Mock ImportError
+        from typing import Any
+
         from SVG2DrawIOLib.path_splitter import PathSplitter
 
-        def mock_split(*args, **kwargs):
+        def mock_split(*args: Any, **kwargs: Any) -> None:
             raise ImportError("svgelements not found")
 
         monkeypatch.setattr(PathSplitter, "split_svg_paths", mock_split)
@@ -977,6 +1028,8 @@ class TestSplitPathsCommand:
         self, runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Test split-paths with general error."""
+        from typing import Any
+
         svg_content = """<?xml version="1.0" encoding="utf-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
     <path d="M10,10 L40,40 Z"/>
@@ -987,7 +1040,7 @@ class TestSplitPathsCommand:
 
         from SVG2DrawIOLib.path_splitter import PathSplitter
 
-        def mock_split(*args, **kwargs):
+        def mock_split(*args: Any, **kwargs: Any) -> None:
             raise RuntimeError("Unexpected error")
 
         monkeypatch.setattr(PathSplitter, "split_svg_paths", mock_split)
@@ -1000,6 +1053,8 @@ class TestSplitPathsCommand:
         self, runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Test split-paths with general error in verbose mode."""
+        from typing import Any
+
         svg_content = """<?xml version="1.0" encoding="utf-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
     <path d="M10,10 L40,40 Z"/>
@@ -1010,7 +1065,7 @@ class TestSplitPathsCommand:
 
         from SVG2DrawIOLib.path_splitter import PathSplitter
 
-        def mock_split(*args, **kwargs):
+        def mock_split(*args: Any, **kwargs: Any) -> None:
             raise RuntimeError("Unexpected error")
 
         monkeypatch.setattr(PathSplitter, "split_svg_paths", mock_split)
@@ -1023,6 +1078,8 @@ class TestSplitPathsCommand:
         self, runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Test split-paths when splitter returns None."""
+        from typing import Any
+
         svg_content = """<?xml version="1.0" encoding="utf-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
     <path d="M10,10 L40,40 Z"/>
@@ -1033,7 +1090,7 @@ class TestSplitPathsCommand:
 
         from SVG2DrawIOLib.path_splitter import PathSplitter
 
-        def mock_split(*args, **kwargs):
+        def mock_split(*args: Any, **kwargs: Any) -> dict[str, int] | None:
             return None
 
         monkeypatch.setattr(PathSplitter, "split_svg_paths", mock_split)
@@ -1082,11 +1139,14 @@ class TestCLICommandLoadingEdgeCases:
         svg2.write_text(sample_svg.read_text())
 
         # Mock process_svg_file to raise an exception
+        from typing import Any
+
+        from SVG2DrawIOLib.models import DrawIOIcon
         from SVG2DrawIOLib.svg_processor import SVGProcessor
 
         original_process = SVGProcessor.process_svg_file
 
-        def mock_process(*args, **kwargs):
+        def mock_process(*args: Any, **kwargs: Any) -> DrawIOIcon:
             if "icon2" in str(args[1]):
                 raise ValueError("Processing error")
             return original_process(*args, **kwargs)

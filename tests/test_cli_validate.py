@@ -260,6 +260,7 @@ class TestValidateCommand:
 
         tree = ET.parse(library)
         root = tree.getroot()
+        assert root.text is not None
         library_data = json.loads(root.text)
 
         # Add invalid icon (missing required field)

@@ -332,7 +332,11 @@ class TestLibraryManager:
             manager.load_library(invalid)
 
     def test_add_icons_renames_existing_duplicates(
-        self, manager: LibraryManager, sample_icons: list[DrawIOIcon], tmp_path: Path, caplog
+        self,
+        manager: LibraryManager,
+        sample_icons: list[DrawIOIcon],
+        tmp_path: Path,
+        caplog: pytest.LogCaptureFixture,
     ) -> None:
         """Test that adding to a library with duplicate names renames them to preserve all icons."""
         import logging

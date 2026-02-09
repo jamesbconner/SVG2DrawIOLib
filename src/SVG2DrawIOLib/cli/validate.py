@@ -2,6 +2,7 @@
 
 import logging
 from pathlib import Path
+from typing import Any
 
 import rich_click as rc
 from rich.table import Table
@@ -73,7 +74,7 @@ def validate(
         raise rc.ClickException(f"Failed to validate library: {e}") from e
 
 
-def _display_validation_results(results: dict, library_path: Path) -> None:
+def _display_validation_results(results: dict[str, Any], library_path: Path) -> None:
     """Display validation results in a formatted table.
 
     Args:
