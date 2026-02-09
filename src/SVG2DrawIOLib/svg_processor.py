@@ -12,6 +12,82 @@ from SVG2DrawIOLib.models import DrawIOIcon, SVGDimensions, SVGProcessingOptions
 logger = logging.getLogger(__name__)
 
 
+def parse_style_attribute(style_str: str) -> dict[str, str]:
+    """Parse CSS style attribute into a dictionary.
+
+    Args:
+        style_str: CSS style string (e.g., "fill:#fff;stroke:#000").
+
+    Returns:
+        Dictionary mapping property names to values.
+
+    Example:
+        >>> parse_style_attribute("fill:#fff;stroke:#000")
+        {'fill': '#fff', 'stroke': '#000'}
+    """
+    styles: dict[str, str] = {}
+    if not style_str:
+        return styles
+
+    for declaration in style_str.split(";"):
+        declaration = declaration.strip()
+        if ":" in declaration:
+            prop, value = declaration.split(":", 1)
+            styles[prop.strip()] = value.strip()
+
+    return styles
+
+
+def get_element_color(
+    element: ET.Element, property_name: str, default: str, preserve_current_color: bool = True
+) -> str | None:
+    """Extract color value from element's style or attribute.
+
+    Checks style attribute first, then direct attribute.
+    Handles currentColor and fill="none" specially.
+
+    Args:
+        element: SVG element to extract color from.
+        property_name: Property name ("fill" or "stroke").
+        default: Default color if none found.
+        preserve_current_color: Whether to preserve currentColor values.
+
+    Returns:
+        Color value or None if fill="none" or no color found.
+
+    Example:
+        >>> elem = ET.Element("path")
+        >>> elem.set("style", "fill:#ff0000")
+        >>> get_element_color(elem, "fill", "#000000")
+        '#ff0000'
+    """
+    # Check style attribute first
+    style_str = element.get("style", "")
+    if style_str:
+        styles = parse_style_attribute(style_str)
+        if property_name in styles:
+            value = styles[property_name]
+            # Handle special values
+            if value.lower() == "none":
+                return None
+            if value == "currentColor":
+                return "currentColor" if preserve_current_color else default
+            return value
+
+    # Fall back to direct attribute
+    attr_value = element.get(property_name, "")
+    if attr_value:
+        # Handle special values
+        if attr_value.lower() == "none":
+            return None
+        if attr_value == "currentColor":
+            return "currentColor" if preserve_current_color else default
+        return attr_value
+
+    # No color found, return default
+    return default
+
+
 class SVGProcessor:
     """Processes SVG files for DrawIO conversion."""
 
@@ -57,14 +133,20 @@ class SVGProcessor:
     def add_css_classes(self, svg_tree: ET.ElementTree) -> ET.ElementTree:
         """Add CSS classes to SVG elements for color editing.
 
-        Preserves original fill colors by using them in the CSS rules.
-        If an element has no fill attribute, uses the default CSS color.
+        Supports multiple CSS modes (fill, stroke, both) and handles:
+        - Style attributes (style="fill:#fff;stroke:#000")
+        - Direct attributes (fill="#fff" stroke="#000")
+        - Special values (fill="none", currentColor)
+        - Inherited styles from parent groups
 
         Args:
             svg_tree: The SVG ElementTree to modify.
 
         Returns:
             Modified SVG ElementTree with CSS classes.
+
+        Raises:
+            ValueError: If SVG tree has no root element.
         """
         root = svg_tree.getroot()
         if root is None:
@@ -72,9 +154,12 @@ class SVGProcessor:
             raise ValueError("SVG tree has no root element")
 
         tag = self.options.namespaced_tag
-        default_color = self.options.css_color
+        css_mode = self.options.css_mode
+        default_fill = self.options.css_color
+        default_stroke = self.options.css_stroke_color
+        preserve_current = self.options.preserve_current_color
 
-        logger.debug(f"Adding CSS classes to <{tag}> elements")
+        logger.debug(f"Adding CSS classes to <{tag}> elements (mode: {css_mode})")
 
         # Create properly namespaced style element
         style = ET.Element(f"{{{self.options.xml_namespace}}}style")
@@ -95,29 +180,52 @@ class SVGProcessor:
                 class_name = f"path{index}"
                 element.set("class", class_name)
 
-            # Preserve original fill color, or use default if none specified
-            original_fill = element.get("fill", default_color)
+            # Skip if we've already processed this class
+            if class_name in seen_classes:
+                element_count += 1
+                continue
 
-            # Only add CSS rule if we haven't seen this class before
-            if class_name not in seen_classes:
-                style.text += f".{class_name}{{fill:{original_fill};}}"
+            # Extract colors based on mode
+            css_rules: list[str] = []
+
+            if css_mode in ("fill", "both"):
+                fill_color = get_element_color(element, "fill", default_fill, preserve_current)
+                if fill_color is not None:  # None means fill="none"
+                    css_rules.append(f"fill:{fill_color}")
+
+            if css_mode in ("stroke", "both"):
+                stroke_color = get_element_color(
+                    element, "stroke", default_stroke, preserve_current
+                )
+                if stroke_color is not None:  # None means stroke="none"
+                    css_rules.append(f"stroke:{stroke_color}")
+
+            # Only add CSS rule if we have properties to set
+            if css_rules:
+                style.text += f".{class_name}{{{';'.join(css_rules)};}}"
                 seen_classes.add(class_name)
 
             element_count += 1
 
-        if element_count > 0:
+        if element_count > 0 and seen_classes:
             # Insert style element in proper location (inside defs or at top)
             defs = root.find(f"{{{self.options.xml_namespace}}}defs")
             if defs is not None:
                 # Insert at start of defs element
                 defs.insert(0, style)
-                logger.debug(f"Added CSS classes to {element_count} elements (style in <defs>)")
+                logger.debug(
+                    f"Added CSS classes to {element_count} elements "
+                    f"({len(seen_classes)} unique, style in <defs>)"
+                )
             else:
                 # Insert as first child of root
                 root.insert(0, style)
-                logger.debug(f"Added CSS classes to {element_count} elements (style at top)")
+                logger.debug(
+                    f"Added CSS classes to {element_count} elements "
+                    f"({len(seen_classes)} unique, style at top)"
+                )
         else:
-            logger.warning(f"No <{tag}> elements found in SVG")
+            logger.warning(f"No <{tag}> elements found in SVG or no CSS rules generated")
 
         return svg_tree
 

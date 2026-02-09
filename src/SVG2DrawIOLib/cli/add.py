@@ -60,6 +60,31 @@ from SVG2DrawIOLib.svg_processor import SVGProcessor
     help="Add CSS classes to new icons for color editing.",
 )
 @rc.option(
+    "--css-mode",
+    type=rc.Choice(["fill", "stroke", "both"], case_sensitive=False),
+    default="fill",
+    show_default=True,
+    help="CSS mode: 'fill' for fill colors, 'stroke' for stroke colors, 'both' for both (requires --css).",
+)
+@rc.option(
+    "--css-color",
+    default="#000000",
+    show_default=True,
+    help="Default CSS fill color (requires --css).",
+)
+@rc.option(
+    "--css-stroke-color",
+    default="#000000",
+    show_default=True,
+    help="Default CSS stroke color (requires --css with --css-mode stroke or both).",
+)
+@rc.option(
+    "--preserve-current-color/--no-preserve-current-color",
+    default=True,
+    show_default=True,
+    help="Preserve 'currentColor' values in CSS (requires --css).",
+)
+@rc.option(
     "--verbose",
     "-v",
     is_flag=True,
@@ -86,6 +111,10 @@ def add(
     width: float | None,
     height: float | None,
     css: bool,
+    css_mode: str,
+    css_color: str,
+    css_stroke_color: str,
+    preserve_current_color: bool,
     verbose: bool,
     quiet: bool,
     recursive: bool,
@@ -200,7 +229,13 @@ def add(
             logger.info("Using default sizing: max dimension 40 (aspect ratio preserved)")
 
         # Create processing options
-        options = SVGProcessingOptions(add_css=css)
+        options = SVGProcessingOptions(
+            add_css=css,
+            css_mode=css_mode,
+            css_color=css_color,
+            css_stroke_color=css_stroke_color,
+            preserve_current_color=preserve_current_color,
+        )
 
         # Process new SVG files
         processor = SVGProcessor(options)
@@ -233,7 +268,6 @@ def add(
             source_files=svg_files,
         )
 
-        logger.info(f"Successfully updated library: {library_file}")
         console.print(
             f"[green]✓[/green] Updated library with {metadata.icon_count} total icon(s): "
             f"[cyan]{library_file}[/cyan]"

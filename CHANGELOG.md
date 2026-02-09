@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Enhanced CSS Injection**: Significantly improved CSS class generation for color editing in DrawIO with support for real-world SVG authoring patterns:
+  - **CSS Modes**: New `--css-mode` option with three modes:
+    - `fill` (default): Generate CSS rules for fill colors only
+    - `stroke`: Generate CSS rules for stroke colors only
+    - `both`: Generate CSS rules for both fill and stroke colors
+  - **Style Attribute Parsing**: Now parses `style="fill:#fff;stroke:#000"` attributes in addition to direct `fill` and `stroke` attributes
+  - **fill="none" Handling**: Properly respects `fill="none"` and `stroke="none"` - no longer forces colors on stroke-only or fill-only paths
+  - **currentColor Support**: New `--preserve-current-color` flag (default: true) to preserve `currentColor` values for theme-aware icons
+  - **Default Stroke Color**: New `--css-stroke-color` option to set default stroke color (used with `--css-mode stroke` or `both`)
+  - Available in both `create` and `add` commands
+  - Makes split-paths workflow more consistently colorable in DrawIO
 - **Extract Command**: New `extract` CLI command for extracting icons from DrawIO libraries back to individual SVG files. This is the inverse operation of `create`, allowing users to recover SVG files from library files. Supports extracting all icons or specific icons by name, with optional overwrite functionality.
 - **Rename Command**: New `rename` CLI command for renaming icons within a DrawIO library. Allows renaming a single icon while preserving its content. Supports optional `--overwrite` flag to replace an existing icon with the new name.
 - **Inspect Command**: New `inspect` CLI command for displaying detailed information about icons in a DrawIO library. Shows dimensions, shape type, CSS classes, and inline styles for each icon. Supports inspecting all icons or specific icons by name, with optional `--show-svg` flag to display the decoded SVG content. Includes `--json` flag for machine-readable JSON output.

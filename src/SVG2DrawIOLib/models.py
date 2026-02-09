@@ -92,15 +92,29 @@ class SVGProcessingOptions:
 
     Attributes:
         add_css: Whether to add CSS classes for color editing.
+        css_mode: CSS mode - "fill", "stroke", or "both".
         css_color: Default CSS fill color.
+        css_stroke_color: Default CSS stroke color.
+        preserve_current_color: Whether to preserve currentColor values.
         xml_namespace: XML namespace for SVG elements.
         css_tag: XML tag to add CSS classes to.
     """
 
     add_css: bool = False
+    css_mode: str = "fill"
     css_color: str = "#000000"
+    css_stroke_color: str = "#000000"
+    preserve_current_color: bool = True
     xml_namespace: str = "http://www.w3.org/2000/svg"
     css_tag: str = "path"
+
+    def __post_init__(self) -> None:
+        """Validate css_mode after initialization."""
+        valid_modes = {"fill", "stroke", "both"}
+        if self.css_mode not in valid_modes:
+            raise ValueError(
+                f"Invalid css_mode '{self.css_mode}'. Must be one of: {', '.join(valid_modes)}"
+            )
 
     @property
     def namespaced_tag(self) -> str:

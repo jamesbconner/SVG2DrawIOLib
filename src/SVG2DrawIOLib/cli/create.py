@@ -57,10 +57,29 @@ from SVG2DrawIOLib.models import SVGProcessingOptions
     help="Add CSS classes to enable color editing in DrawIO.",
 )
 @rc.option(
+    "--css-mode",
+    type=rc.Choice(["fill", "stroke", "both"], case_sensitive=False),
+    default="fill",
+    show_default=True,
+    help="CSS mode: 'fill' for fill colors, 'stroke' for stroke colors, 'both' for both (requires --css).",
+)
+@rc.option(
     "--css-color",
     default="#000000",
     show_default=True,
     help="Default CSS fill color (requires --css).",
+)
+@rc.option(
+    "--css-stroke-color",
+    default="#000000",
+    show_default=True,
+    help="Default CSS stroke color (requires --css with --css-mode stroke or both).",
+)
+@rc.option(
+    "--preserve-current-color/--no-preserve-current-color",
+    default=True,
+    show_default=True,
+    help="Preserve 'currentColor' values in CSS (requires --css).",
 )
 @rc.option(
     "--namespace",
@@ -108,7 +127,10 @@ def create(
     width: float | None,
     height: float | None,
     css: bool,
+    css_mode: str,
     css_color: str,
+    css_stroke_color: str,
+    preserve_current_color: bool,
     namespace: str,
     tag: str,
     verbose: bool,
@@ -161,6 +183,14 @@ def create(
 
         Enable color editing:
         $ SVG2DrawIOLib create icons/ -o lib.xml --css
+
+
+        Enable stroke color editing:
+        $ SVG2DrawIOLib create icons/ -o lib.xml --css --css-mode stroke
+
+
+        Enable both fill and stroke editing:
+        $ SVG2DrawIOLib create icons/ -o lib.xml --css --css-mode both
     """
     setup_logging(verbose, quiet)
     logger = logging.getLogger(__name__)
@@ -215,7 +245,10 @@ def create(
         # Create processing options
         options = SVGProcessingOptions(
             add_css=css,
+            css_mode=css_mode,
             css_color=css_color,
+            css_stroke_color=css_stroke_color,
+            preserve_current_color=preserve_current_color,
             xml_namespace=namespace,
             css_tag=tag,
         )
@@ -245,8 +278,6 @@ def create(
                 metadata = manager.create_library(icons, folder_output, source_files=folder_files)
                 created_libraries.append((folder_output, metadata.icon_count))
 
-                logger.info(f"Created library: {folder_output} with {metadata.icon_count} icon(s)")
-
             # Summary
             console.print(f"[green]✓[/green] Created {len(created_libraries)} libraries by folder:")
             for lib_path, icon_count in created_libraries:
@@ -265,7 +296,6 @@ def create(
             # Create library
             metadata = manager.create_library(icons, output, source_files=svg_files)
 
-            logger.info(f"Successfully created library: {output}")
             console.print(
                 f"[green]✓[/green] Created library with {metadata.icon_count} icon(s): "
                 f"[cyan]{output}[/cyan]"
