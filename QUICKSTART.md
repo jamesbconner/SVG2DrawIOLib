@@ -21,14 +21,28 @@ SVG2DrawIOLib create icons/ -o my-library.xml
 # Convert all SVGs in a directory and subdirectories (recursive)
 SVG2DrawIOLib create icons/ -o my-library.xml --recursive
 
+# Split by folder (creates separate libraries per subdirectory)
+SVG2DrawIOLib create icons/ -o FontAwesome.xml -R --split-by-folder
+
 # With proportional scaling (max dimension 64px)
 SVG2DrawIOLib create icons/ -o library.xml --max-size 64 -R
 
 # With fixed dimensions
 SVG2DrawIOLib create icons/*.svg -o library.xml -w 50 -h 50
 
-# Enable color editing in DrawIO
+# Enable color editing in DrawIO (fill colors)
 SVG2DrawIOLib create icons/ -o library.xml --css
+
+# Enable stroke color editing
+SVG2DrawIOLib create icons/ -o library.xml --css --css-mode stroke
+
+# Enable both fill and stroke color editing
+SVG2DrawIOLib create icons/ -o library.xml --css --css-mode both --css-stroke-color "#0000FF"
+
+# Target different SVG element types for color editing
+# (useful when icons use <circle>, <rect>, etc. instead of <path>)
+SVG2DrawIOLib create icons/ -o library.xml --css --tag circle
+SVG2DrawIOLib create icons/ -o library.xml --css --tag rect
 ```
 
 #### Manage Existing Libraries
@@ -54,8 +68,26 @@ SVG2DrawIOLib add my-library.xml icons/ -w 50 -h 50
 # Remove icons by name
 SVG2DrawIOLib remove my-library.xml old-icon1 old-icon2
 
+# Rename an icon
+SVG2DrawIOLib rename my-library.xml -o old-name -n new-name
+
+# Extract icons back to SVG files
+SVG2DrawIOLib extract my-library.xml -o output-dir/
+
+# Extract specific icons
+SVG2DrawIOLib extract my-library.xml -o output-dir/ icon1 icon2
+
 # List all icons in library
 SVG2DrawIOLib list my-library.xml
+
+# Inspect icon details
+SVG2DrawIOLib inspect my-library.xml
+
+# Inspect specific icons with SVG content
+SVG2DrawIOLib inspect my-library.xml icon1 icon2 --show-svg
+
+# Validate library integrity
+SVG2DrawIOLib validate my-library.xml
 ```
 
 ### CLI Commands
@@ -72,13 +104,23 @@ Options:
   -w, --width FLOAT       Fixed width in pixels
   -h, --height FLOAT      Fixed height in pixels
   -c, --css               Add CSS classes for color editing
+  --css-mode TEXT         CSS mode: fill, stroke, or both (default: fill)
   --css-color TEXT        Default CSS fill color (default: #000000)
+  --css-stroke-color TEXT Default CSS stroke color (default: #000000)
+  --preserve-current-color/--no-preserve-current-color
+                          Preserve currentColor values (default: true)
   -n, --namespace TEXT    XML namespace (default: http://www.w3.org/2000/svg)
-  -t, --tag TEXT          XML tag for CSS classes (default: path)
+  -t, --tag TEXT          SVG element type to target for CSS classes (default: path)
+                          Common values: path, circle, rect, ellipse, line, polygon
+                          Only affects CSS injection (requires --css flag)
   -R, --recursive         Recursively search directories for SVG files
+  -S, --split-by-folder   Create separate libraries per subdirectory (requires -R)
   -v, --verbose           Enable debug logging
   -q, --quiet             Suppress output except errors
 ```
+
+**About the --tag option:**
+The `--tag` option specifies which SVG element type should receive CSS classes for color editing. Most icon libraries use `<path>` elements (the default), but some icons may use `<circle>`, `<rect>`, or other element types. Only elements matching the specified tag will be colorable in DrawIO. This option has no effect without the `--css` flag.
 
 #### add
 Add SVG icons to an existing DrawIO library.
@@ -93,6 +135,11 @@ Options:
   -w, --width FLOAT       Fixed width in pixels
   -h, --height FLOAT      Fixed height in pixels
   -c, --css               Add CSS classes to new icons
+  --css-mode TEXT         CSS mode: fill, stroke, or both (default: fill)
+  --css-color TEXT        Default CSS fill color (default: #000000)
+  --css-stroke-color TEXT Default CSS stroke color (default: #000000)
+  --preserve-current-color/--no-preserve-current-color
+                          Preserve currentColor values (default: true)
   -R, --recursive         Recursively search directories for SVG files
   -v, --verbose           Enable debug logging
   -q, --quiet             Suppress output except errors
@@ -109,6 +156,34 @@ Options:
   -q, --quiet             Suppress output except errors
 ```
 
+#### extract
+Extract icons from a DrawIO library back to individual SVG files.
+
+```bash
+SVG2DrawIOLib extract [OPTIONS] LIBRARY_FILE
+
+Options:
+  -o, --output-dir PATH   Output directory for SVG files (required)
+  -i, --icons TEXT        Specific icon names to extract (optional)
+  --overwrite             Overwrite existing SVG files
+  -v, --verbose           Enable debug logging
+  -q, --quiet             Suppress output except errors
+```
+
+#### rename
+Rename an icon within a DrawIO library.
+
+```bash
+SVG2DrawIOLib rename [OPTIONS] LIBRARY_FILE
+
+Options:
+  -o, --old-name TEXT     Current icon name (required)
+  -n, --new-name TEXT     New icon name (required)
+  --overwrite             Overwrite if new name already exists
+  -v, --verbose           Enable debug logging
+  -q, --quiet             Suppress output except errors
+```
+
 #### list
 List all icons in a DrawIO library.
 
@@ -116,6 +191,42 @@ List all icons in a DrawIO library.
 SVG2DrawIOLib list [OPTIONS] LIBRARY_FILE
 
 Options:
+  -v, --verbose           Enable debug logging
+  -q, --quiet             Suppress output except errors
+```
+
+#### inspect
+Display detailed information about icons in a library.
+
+```bash
+SVG2DrawIOLib inspect [OPTIONS] LIBRARY_FILE [ICON_NAMES]...
+
+Options:
+  --show-svg              Display decoded SVG content
+  --json                  Output in JSON format
+  -v, --verbose           Enable debug logging
+  -q, --quiet             Suppress output except errors
+```
+
+#### validate
+Validate DrawIO library file integrity.
+
+```bash
+SVG2DrawIOLib validate [OPTIONS] LIBRARY_FILE
+
+Options:
+  -v, --verbose           Enable debug logging
+  -q, --quiet             Suppress output except errors
+```
+
+#### split-paths
+Split compound SVG paths into separate path elements.
+
+```bash
+SVG2DrawIOLib split-paths [OPTIONS] SVG_FILE
+
+Options:
+  -o, --output PATH       Output SVG file path (required)
   -v, --verbose           Enable debug logging
   -q, --quiet             Suppress output except errors
 ```
@@ -210,7 +321,10 @@ from SVG2DrawIOLib.models import SVGProcessingOptions
 # Create processor with options
 options = SVGProcessingOptions(
     add_css=True,
+    css_mode="both",  # Enable both fill and stroke color editing
     css_color="#000000",
+    css_stroke_color="#0000FF",
+    preserve_current_color=True,
     xml_namespace="http://www.w3.org/2000/svg",
     css_tag="path"
 )
@@ -259,6 +373,7 @@ from pathlib import Path
 from SVG2DrawIOLib.library_manager import LibraryManager
 from SVG2DrawIOLib.svg_processor import SVGProcessor
 from SVG2DrawIOLib.models import SVGProcessingOptions
+from SVG2DrawIOLib.icon_analyzer import IconAnalyzer
 
 manager = LibraryManager()
 
@@ -275,6 +390,14 @@ metadata = manager.add_icons_to_library(
     replace_duplicates=False
 )
 
+# Rename an icon
+metadata = manager.rename_icon(
+    Path("my-library.xml"),
+    old_name="old-icon-name",
+    new_name="new-icon-name",
+    overwrite=False
+)
+
 # Remove icons
 metadata = manager.remove_icons_from_library(
     Path("my-library.xml"),
@@ -285,6 +408,14 @@ metadata = manager.remove_icons_from_library(
 icon_names = manager.list_icons(Path("my-library.xml"))
 for name in icon_names:
     print(name)
+
+# Extract and analyze icons
+analyzer = IconAnalyzer()
+icons_data = analyzer.extract_icons(Path("my-library.xml"))
+for icon_data in icons_data:
+    print(f"Icon: {icon_data['name']}")
+    print(f"  Dimensions: {icon_data['width']}x{icon_data['height']}")
+    print(f"  Shape type: {icon_data['shape_type']}")
 ```
 
 ### Custom Dimensions
@@ -387,30 +518,54 @@ The CLI uses rich-click for colorful output. If colors aren't showing:
 
 ## Architecture Overview
 
-The project follows a modular, class-based architecture:
+The project follows a modular, class-based architecture with SOLID principles:
 
 - **models.py**: Dataclasses for type-safe data structures
   - `SVGDimensions`: Width/height with scaling logic
   - `DrawIOIcon`: Icon representation with metadata
-  - `SVGProcessingOptions`: Configuration for SVG processing
+  - `SVGProcessingOptions`: Configuration for SVG processing (including CSS modes)
   - `LibraryMetadata`: Library file metadata
 
 - **svg_processor.py**: `SVGProcessor` class for SVG operations
   - Load and parse SVG files
-  - Add CSS classes for color editing
+  - Add CSS classes for color editing (fill, stroke, or both modes)
+  - Parse style attributes and handle special values (none, currentColor)
   - Calculate dimensions and scaling
+  - Adjust viewBox to content bounds (with svgelements integration)
   - Convert to data URIs
 
 - **library_manager.py**: `LibraryManager` class for library operations
   - Create new libraries
   - Load existing libraries
-  - Add/remove icons
+  - Add/remove/rename icons
   - List icons
 
+- **icon_analyzer.py**: `IconAnalyzer` service for icon inspection
+  - Extract icon content from libraries
+  - Analyze SVG structure (CSS classes, inline styles)
+  - Decode and decompress icon data
+
+- **path_splitter.py**: `PathSplitter` class for SVG path operations
+  - Split compound paths into separate elements
+  - Detect and preserve nested paths (donut holes)
+  - Generate unique CSS classes for split paths
+
+- **library_validator.py**: `LibraryValidator` service for validation
+  - Validate XML structure and JSON format
+  - Check icon integrity (dimensions, encoding, compression)
+  - Validate mxGraphModel structure
+  - Verify SVG content (namespace, viewBox, empty detection)
+
 - **cli/**: Modular CLI with dynamic command loading
-  - `__init__.py`: Main entry point with auto-discovery
+  - `__init__.py`: Main entry point with auto-discovery and command groups
   - `helpers.py`: Shared utilities (console, logging)
-  - Individual command files: `create.py`, `add.py`, `remove.py`, `list.py`
+  - Individual command files: `create.py`, `add.py`, `remove.py`, `list.py`, `extract.py`, `rename.py`, `inspect.py`, `validate.py`, `split_paths.py`
+  - `create_helpers.py`: Business logic extracted from create command
+
+**Command Groups:**
+- **Library Management**: create, add, remove, extract, rename
+- **Library Inspection**: list, inspect, validate
+- **SVG Processing**: split-paths
 
 See `ARCHITECTURE.md` for detailed architecture documentation.
 

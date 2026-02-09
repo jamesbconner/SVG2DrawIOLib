@@ -33,6 +33,12 @@ Convert SVG files into DrawIO/diagrams.net shape libraries with support for colo
 pip install SVG2DrawIOLib
 ```
 
+or
+
+```bash
+uv pip install SVG2DrawIOLib
+```
+
 ### Basic Usage
 
 ```bash
@@ -61,7 +67,9 @@ SVG2DrawIOLib create icons/ --max-size 64 -o large-icons.xml -R
 
 ## Commands
 
-### Create a Library
+### Library Management Commands
+
+#### Create a Library
 
 Create a new DrawIO library from SVG files:
 
@@ -74,9 +82,13 @@ SVG2DrawIOLib create icons/ -o my-library.xml
 
 # Recursive directory scan
 SVG2DrawIOLib create icons/ -o my-library.xml --recursive
+
+# Split by folder (creates separate libraries per subdirectory)
+SVG2DrawIOLib create icons/ -o FontAwesome.xml -R --split-by-folder
+# Creates: FontAwesome-Regular.xml, FontAwesome-Solid.xml, etc.
 ```
 
-### Add Icons to Library
+#### Add Icons to Library
 
 Add new icons to an existing library:
 
@@ -91,7 +103,7 @@ SVG2DrawIOLib add my-library.xml icon1.svg icon2.svg
 SVG2DrawIOLib add my-library.xml icon.svg --replace
 ```
 
-### Remove Icons
+#### Remove Icons
 
 Remove icons from a library by name:
 
@@ -99,7 +111,36 @@ Remove icons from a library by name:
 SVG2DrawIOLib remove my-library.xml icon-name1 icon-name2
 ```
 
-### List Icons
+#### Extract Icons
+
+Extract icons from a library back to individual SVG files:
+
+```bash
+# Extract all icons
+SVG2DrawIOLib extract my-library.xml -o output-dir/
+
+# Extract specific icons
+SVG2DrawIOLib extract my-library.xml -o output-dir/ icon1 icon2
+
+# Overwrite existing files
+SVG2DrawIOLib extract my-library.xml -o output-dir/ --overwrite
+```
+
+#### Rename Icons
+
+Rename an icon within a library:
+
+```bash
+# Rename icon
+SVG2DrawIOLib rename my-library.xml -o old-name -n new-name
+
+# Overwrite if new name exists
+SVG2DrawIOLib rename my-library.xml -o old-name -n new-name --overwrite
+```
+
+### Library Inspection Commands
+
+#### List Icons
 
 List all icons in a library:
 
@@ -107,7 +148,35 @@ List all icons in a library:
 SVG2DrawIOLib list my-library.xml
 ```
 
-### Split Compound Paths
+#### Inspect Icons
+
+Display detailed information about icons:
+
+```bash
+# Inspect all icons
+SVG2DrawIOLib inspect my-library.xml
+
+# Inspect specific icons
+SVG2DrawIOLib inspect my-library.xml icon1 icon2
+
+# Show SVG content
+SVG2DrawIOLib inspect my-library.xml --show-svg
+
+# JSON output
+SVG2DrawIOLib inspect my-library.xml --json
+```
+
+#### Validate Library
+
+Validate library file integrity:
+
+```bash
+SVG2DrawIOLib validate my-library.xml
+```
+
+### SVG Processing Commands
+
+#### Split Compound Paths
 
 Split SVG paths with multiple shapes into separate paths for per-path color control:
 
@@ -134,8 +203,32 @@ Useful for icons that have a single compound path but multiple distinct shapes.
 Enable color customization in DrawIO by injecting CSS classes:
 
 ```bash
+# Basic color editing (fill colors only)
 SVG2DrawIOLib create icons/ --css -o colorable-icons.xml
+
+# Stroke colors only
+SVG2DrawIOLib create icons/ --css --css-mode stroke -o colorable-icons.xml
+
+# Both fill and stroke colors
+SVG2DrawIOLib create icons/ --css --css-mode both -o colorable-icons.xml
+
+# Custom default colors
+SVG2DrawIOLib create icons/ --css --css-color "#FF0000" --css-stroke-color "#0000FF" -o colorable-icons.xml
+
+# Disable currentColor preservation
+SVG2DrawIOLib create icons/ --css --no-preserve-current-color -o colorable-icons.xml
 ```
+
+**CSS Modes:**
+- `fill` (default): Generate CSS rules for fill colors only
+- `stroke`: Generate CSS rules for stroke colors only
+- `both`: Generate CSS rules for both fill and stroke colors
+
+**Features:**
+- Parses both `style="fill:#fff"` attributes and direct `fill="#fff"` attributes
+- Properly handles `fill="none"` and `stroke="none"` (doesn't force colors)
+- Preserves `currentColor` values by default for theme-aware icons
+- Supports custom default colors for fill and stroke
 
 This allows users to change icon colors directly in DrawIO's interface. For icons with compound paths (single path containing multiple shapes), use `split-paths` first to enable per-shape color control.
 
@@ -162,12 +255,68 @@ SVG2DrawIOLib create icons/ --width 50 --height 50 -o square-icons.xml
 # Custom XML namespace
 SVG2DrawIOLib create icons/ --namespace "http://custom.ns" -o library.xml
 
-# Custom CSS tag for color editing
-SVG2DrawIOLib create icons/ --css --tag "circle" -o library.xml
-
-# Custom CSS color
-SVG2DrawIOLib create icons/ --css --css-color "#FF0000" -o library.xml
+# Custom CSS colors
+SVG2DrawIOLib create icons/ --css --css-color "#FF0000" --css-stroke-color "#0000FF" -o library.xml
 ```
+
+### Target Specific SVG Elements for Color Editing
+
+The `--tag` option (short: `-t`) controls which SVG element type receives CSS classes when using `--css`. This is useful when your icons use different element types for their shapes.
+
+**Default behavior:** Targets `<path>` elements (works for most icon libraries)
+
+```bash
+# Default: Add CSS classes to <path> elements
+SVG2DrawIOLib create icons/ --css -o library.xml
+
+# Target <circle> elements instead
+SVG2DrawIOLib create icons/ --css --tag circle -o library.xml
+
+# Target <rect> elements
+SVG2DrawIOLib create icons/ --css --tag rect -o library.xml
+
+# Target <ellipse> elements
+SVG2DrawIOLib create icons/ --css --tag ellipse -o library.xml
+```
+
+**When to use:**
+- Most icon libraries (Font Awesome, Material Icons, etc.) convert all shapes to `<path>` elements, so the default works fine
+- If your SVGs primarily use `<circle>`, `<rect>`, or other element types, specify that tag
+- Only elements of the specified type will get CSS classes for color editing
+- You can only target one element type per command
+
+**Example:** If your icon uses circles for dots and paths for lines, and you want to make the circles colorable:
+```bash
+SVG2DrawIOLib create icon.svg --css --tag circle -o library.xml
+```
+
+**Note:** The `--tag` option only affects CSS class injection. It has no effect without the `--css` flag.
+
+### Split by Folder
+
+Organize icons by subdirectory structure:
+
+```bash
+# Create separate libraries for each subdirectory
+SVG2DrawIOLib create icons/ -o FontAwesome.xml -R --split-by-folder
+
+# Example directory structure:
+# icons/
+#   Regular/
+#     icon1.svg
+#     icon2.svg
+#   Solid/
+#     icon3.svg
+#   Brands/
+#     icon4.svg
+#
+# Creates:
+#   FontAwesome-Regular.xml (2 icons)
+#   FontAwesome-Solid.xml (1 icon)
+#   FontAwesome-Brands.xml (1 icon)
+```
+
+This is useful for icon sets that are already organized by category in the filesystem.
 
 ## How It Works
 

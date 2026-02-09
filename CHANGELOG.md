@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.1] - 2026-02-09
+
+### Changed
+
+- **Documentation Improvements**: Significantly improved documentation for v1.2.0 features in README.md, QUICKSTART.md, ARCHITECTURE.md, and CONTRIBUTING.md:
+  - Added documentation for new commands: `extract`, `rename`, `inspect`, `validate`
+  - Enhanced CSS feature documentation with detailed explanations of `--css-mode`, `--css-stroke-color`, and `--preserve-current-color` options
+  - Added `--split-by-folder` feature documentation with directory structure examples
+  - Reorganized command documentation into three logical groups: Library Management, Library Inspection, and SVG Processing
+  - Clarified `--tag` option with practical examples showing when and how to target different SVG element types (path, circle, rect, ellipse)
+  - Updated Python API examples to demonstrate new features including `IconAnalyzer` service and `rename_icon()` method
+  - Enhanced architecture overview with descriptions of new service classes (`IconAnalyzer`, `LibraryValidator`, `PathSplitter`) and helper modules (`create_helpers.py`)
+  - Updated module structure diagram to reflect all new files and commands
+  - Documented CSS mode behavior and special value handling in detail
+  - Expanded CONTRIBUTING.md with coding guidelines, providing detailed inline guidance on:
+    - SOLID principles and separation of concerns
+    - Code style, naming conventions, and formatting rules
+    - Documentation standards with Google-style docstring examples
+    - Error handling and logging best practices
+    - Testing structure and coverage requirements
+    - CLI development patterns and best practices
+    - Performance and security considerations
+
 ## [1.2.0] - 2026-02-08
 
 ### Added
