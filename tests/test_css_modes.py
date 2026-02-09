@@ -356,7 +356,11 @@ class TestDefaultColors:
         assert "fill:#abcdef" in (style.text or "")
 
     def test_default_stroke_color_used(self, tmp_path: Path) -> None:
-        """Test that default stroke color is used when no stroke specified."""
+        """Test that default stroke color is NOT used when no stroke specified.
+
+        SVG default for stroke is 'none' (invisible), so elements without
+        a stroke attribute should not get a stroke CSS rule.
+        """
         svg_content = """<?xml version="1.0" encoding="utf-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
     <path d="M10,10 L30,30"/>
@@ -370,8 +374,10 @@ class TestDefaultColors:
         modified = processor.add_css_classes(tree)
 
         root = modified.getroot()
-        style = get_style_element(root)
-        assert "stroke:#fedcba" in (style.text or "")
+        assert root is not None
+        # No style element should be created when no stroke is present
+        style = root.find(".//{http://www.w3.org/2000/svg}style")
+        assert style is None
 
 
 class TestComplexScenarios:

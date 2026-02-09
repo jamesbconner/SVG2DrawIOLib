@@ -118,6 +118,20 @@ class TestGetElementColor:
         result = get_element_color(elem, "stroke", "#000000")
         assert result == "#ff0000"
 
+    def test_get_element_color_stroke_not_specified_returns_none(self) -> None:
+        """Test that stroke returns None when not specified (SVG default is none)."""
+        elem = ET.Element("path")
+        # No stroke attribute at all
+        result = get_element_color(elem, "stroke", "#000000")
+        assert result is None
+
+    def test_get_element_color_fill_not_specified_returns_default(self) -> None:
+        """Test that fill returns default when not specified (SVG default is black)."""
+        elem = ET.Element("path")
+        # No fill attribute at all
+        result = get_element_color(elem, "fill", "#000000")
+        assert result == "#000000"
+
 
 class TestCSSModes:
     """Tests for CSS mode functionality."""
@@ -211,6 +225,50 @@ class TestCSSModes:
         # Should only have stroke, not fill
         assert "stroke:#ff0000" in style_text
         assert "fill:" not in style_text
+
+    def test_add_css_classes_stroke_mode_no_stroke_attribute(self, tmp_path: Path) -> None:
+        """Test CSS generation with stroke mode when element has no stroke attribute."""
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+    <path d="M10,10 L40,40" fill="#ff0000"/>
+</svg>"""
+        svg_file = tmp_path / "test.svg"
+        svg_file.write_text(svg_content)
+
+        options = SVGProcessingOptions(add_css=True, css_mode="stroke")
+        processor = SVGProcessor(options)
+        tree = processor.load_svg(svg_file)
+        modified = processor.add_css_classes(tree)
+
+        root = modified.getroot()
+        assert root is not None
+        styles = list(root.iter("{http://www.w3.org/2000/svg}style"))
+        # Should not add style element when no stroke is present (SVG default is none)
+        assert len(styles) == 0
+
+    def test_add_css_classes_both_mode_no_stroke_attribute(self, tmp_path: Path) -> None:
+        """Test CSS generation with both mode when element has no stroke attribute."""
+        svg_content = """<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+    <path d="M10,10 L40,40" fill="#ff0000"/>
+</svg>"""
+        svg_file = tmp_path / "test.svg"
+        svg_file.write_text(svg_content)
+
+        options = SVGProcessingOptions(add_css=True, css_mode="both")
+        processor = SVGProcessor(options)
+        tree = processor.load_svg(svg_file)
+        modified = processor.add_css_classes(tree)
+
+        root = modified.getroot()
+        assert root is not None
+        styles = list(root.iter("{http://www.w3.org/2000/svg}style"))
+        assert len(styles) == 1
+        style_text = styles[0].text
+        assert style_text is not None
+        # Should only have fill, not stroke (SVG default stroke is none)
+        assert "fill:#ff0000" in style_text
+        assert "stroke:" not in style_text
 
 
 class TestManualFallbackWithTransforms:

@@ -53,7 +53,9 @@ def get_element_color(
         preserve_current_color: Whether to preserve currentColor values.
 
     Returns:
-        Color value or None if fill="none" or no color found.
+        Color value or None if property="none" or no color found.
+        For stroke property, returns None when not specified (SVG default is none).
+        For fill property, returns default when not specified (SVG default is black).
 
     Example:
         >>> elem = ET.Element("path")
@@ -84,7 +86,11 @@ def get_element_color(
             return "currentColor" if preserve_current_color else default
         return attr_value
 
-    # No color found, return default
+    # No color found
+    # For stroke, SVG default is "none" (invisible), so return None
+    # For fill, SVG default is black, so return default
+    if property_name == "stroke":
+        return None
     return default
 
 
