@@ -118,15 +118,234 @@ Then create a pull request on GitHub.
 
 ## Code Guidelines
 
-### Python Style
+### Python Style and Best Practices
 
-Follow the project's Python rules (see `.kiro/steering/python.rules.md`):
+This project follows modern Python best practices with a focus on maintainability, type safety, and testability.
 
-- Use Python 3.13+ features
-- Follow SOLID principles
-- Write modular, testable code
-- Use type hints everywhere
-- Add comprehensive docstrings
+#### Core Principles
+
+1. **SOLID Principles**
+   - **Single Responsibility**: Each class/function should have one clear purpose
+   - **Open/Closed**: Open for extension, closed for modification
+   - **Liskov Substitution**: Subtypes must be substitutable for their base types
+   - **Interface Segregation**: Many specific interfaces over one general interface
+   - **Dependency Inversion**: Depend on abstractions, not concretions
+
+2. **Separation of Concerns**
+   - **Models** (`models.py`): Data structures and validation only
+   - **Services** (`svg_processor.py`, `library_manager.py`, etc.): Business logic
+   - **CLI** (`cli/`): User interface layer, thin orchestration
+   - **Helpers** (`cli/helpers.py`, `cli/create_helpers.py`): Reusable utilities
+
+3. **Type Safety**
+   - Use type hints for all function parameters and return values
+   - Use modern Python 3.13+ type syntax: `list[str]`, `dict[str, int]`
+   - Run `mypy --strict` and fix all type errors
+   - Avoid `Any` unless absolutely necessary
+
+#### Code Style
+
+**Formatting and Linting:**
+- Use `ruff` for both formatting and linting (replaces black, isort, flake8)
+- Line length: 100 characters
+- Follow PEP 8 conventions
+- Run `make format` before committing
+
+**Naming Conventions:**
+- Classes: `PascalCase` (e.g., `SVGProcessor`, `LibraryManager`)
+- Functions/methods: `snake_case` (e.g., `process_svg_file`, `add_css_classes`)
+- Constants: `UPPER_SNAKE_CASE` (e.g., `DEFAULT_MAX_SIZE`)
+- Private methods: `_leading_underscore` (e.g., `_compress_and_encode`)
+
+**Imports:**
+- Standard library imports first
+- Third-party imports second
+- Local imports last
+- Alphabetically sorted within each group
+- Use absolute imports for project modules
+
+#### Documentation
+
+**Docstrings:**
+Use Google-style docstrings for all public functions, classes, and methods:
+
+```python
+def process_svg_file(
+    self,
+    filepath: Path,
+    max_dimension: float | None = None,
+    width: float | None = None,
+    height: float | None = None,
+) -> DrawIOIcon:
+    """Process an SVG file and create a DrawIO icon.
+
+    Loads the SVG, optionally adds CSS classes, calculates dimensions,
+    and generates the compressed mxGraphModel XML.
+
+    Args:
+        filepath: Path to the SVG file to process.
+        max_dimension: Maximum dimension for proportional scaling (optional).
+        width: Fixed width in pixels (optional, overrides max_dimension).
+        height: Fixed height in pixels (optional, overrides max_dimension).
+
+    Returns:
+        DrawIOIcon with processed SVG data and dimensions.
+
+    Raises:
+        FileNotFoundError: If the SVG file doesn't exist.
+        ET.ParseError: If the SVG file is not valid XML.
+        ValueError: If dimensions cannot be determined.
+
+    Example:
+        >>> processor = SVGProcessor(SVGProcessingOptions())
+        >>> icon = processor.process_svg_file(Path("icon.svg"), max_dimension=64)
+        >>> print(f"{icon.name}: {icon.dimensions.width}x{icon.dimensions.height}")
+        icon: 64x64
+    """
+```
+
+**Comments:**
+- Use comments to explain *why*, not *what*
+- Avoid obvious comments that restate the code
+- Use comments for complex algorithms or non-obvious decisions
+
+#### Error Handling
+
+**Exceptions:**
+- Use specific exception types (avoid bare `except`)
+- Provide actionable error messages
+- Include context in error messages (file paths, values, etc.)
+- Log errors before raising
+
+```python
+if not filepath.exists():
+    logger.error(f"SVG file not found: {filepath}")
+    raise FileNotFoundError(f"SVG file not found: {filepath}")
+```
+
+**Logging:**
+- Use the `logging` module, not `print()`
+- Use appropriate log levels:
+  - `DEBUG`: Detailed diagnostic information
+  - `INFO`: General informational messages
+  - `WARNING`: Warning messages for recoverable issues
+  - `ERROR`: Error messages for failures
+- Include context in log messages
+
+```python
+logger.debug(f"Processing SVG: {filepath}")
+logger.info(f"Created library with {icon_count} icons")
+logger.warning(f"Icon '{name}' already exists, skipping")
+logger.error(f"Failed to parse SVG {filepath}: {error}")
+```
+
+#### Testing
+
+**Test Structure:**
+- One test file per module (e.g., `test_svg_processor.py` for `svg_processor.py`)
+- Use descriptive test names that explain what is being tested
+- Group related tests in classes
+- Use pytest fixtures for common setup
+
+```python
+class TestSVGProcessor:
+    """Tests for SVGProcessor class."""
+
+    @pytest.fixture
+    def processor(self) -> SVGProcessor:
+        """Create a processor with default options."""
+        return SVGProcessor(SVGProcessingOptions())
+
+    @pytest.fixture
+    def sample_svg(self, tmp_path: Path) -> Path:
+        """Create a sample SVG file for testing."""
+        svg_path = tmp_path / "test.svg"
+        svg_path.write_text(
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">'
+            '<path d="M10,0L20,20L0,20Z" fill="#000"/>'
+            '</svg>'
+        )
+        return svg_path
+
+    def test_process_svg_file_basic(
+        self, processor: SVGProcessor, sample_svg: Path
+    ) -> None:
+        """Test basic SVG file processing."""
+        icon = processor.process_svg_file(sample_svg)
+        assert icon.name == "test"
+        assert icon.dimensions.width > 0
+        assert icon.dimensions.height > 0
+
+    def test_process_svg_file_not_found(self, processor: SVGProcessor) -> None:
+        """Test processing non-existent file raises FileNotFoundError."""
+        with pytest.raises(FileNotFoundError):
+            processor.process_svg_file(Path("nonexistent.svg"))
+```
+
+**Coverage:**
+- Aim for 90%+ coverage on all modules
+- Test both success and failure paths
+- Test edge cases and boundary conditions
+- Use `make cov` to generate coverage reports
+
+#### CLI Development
+
+**Command Structure:**
+- Each command in its own file (e.g., `cli/create.py`)
+- Function name must match filename (e.g., `def create()` in `create.py`)
+- Keep CLI commands thin - delegate to service classes
+- Extract complex logic into helper modules (e.g., `create_helpers.py`)
+
+**CLI Best Practices:**
+- Use `rich_click` for colorful output
+- Use `console.print()` for user-facing messages
+- Use `logger` for diagnostic messages
+- Provide clear error messages with context
+- Support `--verbose` and `--quiet` flags
+- Use `rc.ClickException` for user errors, not `sys.exit()`
+
+```python
+@rc.command()
+@rc.argument("svg_paths", nargs=-1, required=True, type=rc.Path(exists=True, path_type=Path))
+@rc.option("--output", "-o", type=rc.Path(path_type=Path), required=True)
+@rc.option("--verbose", "-v", is_flag=True, help="Enable debug logging.")
+@rc.option("--quiet", "-q", is_flag=True, help="Suppress output except errors.")
+def create(svg_paths: tuple[Path, ...], output: Path, verbose: bool, quiet: bool) -> None:
+    """Create a new DrawIO library from SVG files.
+
+    \b
+    Example:
+        SVG2DrawIOLib create icon1.svg icon2.svg -o library.xml
+    """
+    setup_logging(verbose, quiet)
+    logger = logging.getLogger(__name__)
+
+    try:
+        # Delegate to service classes
+        manager = LibraryManager()
+        # ... implementation
+        console.print(f"[green]✓[/green] Created library: [cyan]{output}[/cyan]")
+    except Exception as e:
+        logger.error(f"Failed to create library: {e}")
+        if verbose:
+            raise
+        raise rc.ClickException(f"Failed to create library: {e}") from e
+```
+
+#### Performance Considerations
+
+- Use generators for large datasets
+- Avoid loading entire files into memory when possible
+- Cache expensive computations when appropriate
+- Profile code before optimizing (don't guess)
+
+#### Security
+
+- Validate all user inputs
+- Use `Path` objects for file operations (prevents path traversal)
+- Never execute shell commands with user input
+- Use safe XML parsing (no external entities)
+- Run `make security` to check for security issues
 
 ### Example Function
 
