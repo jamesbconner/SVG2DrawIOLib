@@ -147,7 +147,8 @@ class TestValidateCommand:
 
         result = runner.invoke(cli, ["validate", str(library)])
         assert result.exit_code != 0
-        assert "Failed to decode base64" in result.output
+        # With fallback to URL-encoded format, this now fails at XML parsing
+        assert "Failed to parse mxGraphModel XML" in result.output
 
     def test_validate_invalid_compression(self, runner: CliRunner, tmp_path: Path) -> None:
         """Test validate with data that can't be decompressed."""
@@ -161,7 +162,8 @@ class TestValidateCommand:
 
         result = runner.invoke(cli, ["validate", str(library)])
         assert result.exit_code != 0
-        assert "Failed to decompress data" in result.output
+        # With fallback to URL-encoded format, this now fails at XML parsing
+        assert "Failed to parse mxGraphModel XML" in result.output
 
     def test_validate_invalid_mxgraphmodel(self, runner: CliRunner, tmp_path: Path) -> None:
         """Test validate with invalid mxGraphModel XML."""

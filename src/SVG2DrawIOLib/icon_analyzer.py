@@ -5,12 +5,12 @@ import binascii
 import logging
 import re
 import xml.etree.ElementTree as ET
-import zlib
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from SVG2DrawIOLib.models import DrawIOIcon
+from SVG2DrawIOLib.xml_utils import decode_drawio_xml
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +51,7 @@ class IconAnalyzer:
         """Extract SVG content and style information from icon data.
 
         Args:
-            xml_data: Base64-encoded, compressed mxGraphModel XML.
+            xml_data: Base64-encoded compressed mxGraphModel XML or URL-encoded plain text XML.
 
         Returns:
             Tuple of (svg_content, style_info).
@@ -60,11 +60,8 @@ class IconAnalyzer:
             ValueError: If the data cannot be decompressed or parsed.
         """
         try:
-            # Decode base64
-            compressed = base64.b64decode(xml_data)
-
-            # Decompress using raw DEFLATE (wbits=-15)
-            decompressed = zlib.decompress(compressed, wbits=-15)
+            # Decode XML data (handles both compressed and URL-encoded formats)
+            decompressed = decode_drawio_xml(xml_data)
 
             # Parse mxGraphModel XML
             root = ET.fromstring(decompressed)  # nosec B314 - User-provided library file
@@ -124,13 +121,16 @@ class IconAnalyzer:
             return svg_content, style_info
 
         except binascii.Error as e:
-            raise ValueError(f"Failed to decode base64: {e}") from e
-        except zlib.error as e:
-            raise ValueError(f"Failed to decompress icon data: {e}") from e
+            # This can occur during SVG base64 decoding (line 93)
+            raise ValueError(f"Failed to decode SVG base64: {e}") from e
+        except UnicodeDecodeError as e:
+            # This can occur during SVG UTF-8 decoding (line 94)
+            raise ValueError(f"Failed to decode SVG UTF-8: {e}") from e
         except ET.ParseError as e:
             raise ValueError(f"Failed to parse mxGraphModel XML: {e}") from e
-        except UnicodeDecodeError as e:
-            raise ValueError(f"Failed to decode SVG UTF-8: {e}") from e
+        except ValueError:
+            # Re-raise ValueError from decode_drawio_xml or other sources
+            raise
 
     def extract_to_file(
         self,
