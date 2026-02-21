@@ -120,16 +120,17 @@ class IconAnalyzer:
 
             return svg_content, style_info
 
-        except ValueError:
-            # Re-raise ValueError from decode_drawio_xml or XML parsing
-            raise
         except binascii.Error as e:
-            # This can still occur during SVG base64 decoding
+            # This can occur during SVG base64 decoding (line 93)
             raise ValueError(f"Failed to decode SVG base64: {e}") from e
+        except UnicodeDecodeError as e:
+            # This can occur during SVG UTF-8 decoding (line 94)
+            raise ValueError(f"Failed to decode SVG UTF-8: {e}") from e
         except ET.ParseError as e:
             raise ValueError(f"Failed to parse mxGraphModel XML: {e}") from e
-        except UnicodeDecodeError as e:
-            raise ValueError(f"Failed to decode SVG UTF-8: {e}") from e
+        except ValueError:
+            # Re-raise ValueError from decode_drawio_xml or other sources
+            raise
 
     def extract_to_file(
         self,
