@@ -29,7 +29,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          uv pip install --system -e ".[dev]"
+          uv pip install --system -e ".[dev,web]"
 
       - name: Run ruff format check
         run: ruff format --check src tests
