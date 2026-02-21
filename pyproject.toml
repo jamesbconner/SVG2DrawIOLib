@@ -38,6 +38,11 @@ dependencies = [
 dynamic = ["version"]
 
 [project.optional-dependencies]
+web = [
+  "fastapi>=0.115.0",
+  "uvicorn[standard]>=0.32.0",
+  "python-multipart>=0.0.12",
+]
 dev = [
   "pytest>=8.4.2",
   "pytest-cov>=6.0.0",
@@ -60,9 +65,13 @@ Changelog = "https://github.com/jamesbconner/SVG2DrawIOLib/blob/main/CHANGELOG.m
 [project.scripts]
 SVG2DrawIOLib = "SVG2DrawIOLib.cli:cli"
 svg2drawiolib = "SVG2DrawIOLib.cli:cli"
+svg2drawio = "SVG2DrawIOLib.cli:cli"
 
 [tool.hatch.version]
 path = "src/SVG2DrawIOLib/__about__.py"
+
+[tool.hatch.build.targets.wheel]
+artifacts = ["src/SVG2DrawIOLib/web"]
 
 [tool.hatch.envs.default]
 dependencies = [

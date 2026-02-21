@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-02-21
+
+### Added
+
+- **Browser-based Web UI**: New optional web interface that exposes all CLI commands as a browser UI. Install with `pip install "SVG2DrawIOLib[web]"` and launch with `svg2drawio web`. The server automatically opens the browser and serves both the API and frontend from a single process on port 8000.
+  - **Six tabs**: Create (convert SVGs to a new library), Manage (add icons, remove icons, rename icons), Extract (save icons as SVG files), Inspect (view icon details and SVG previews), Validate (structural integrity report), Split Paths (split compound paths for per-path color control)
+  - **FastAPI sidecar** (`src/SVG2DrawIOLib/api/`): Nine REST endpoints under `/api/*` wrapping the same Python services used by the CLI. Reuses `process_svg_files()`, `determine_sizing_strategy()`, `sanitize_filename()`, and `safe_path_join()` directly — no logic duplication.
+  - **SVG sanitization**: Uploaded SVG files are stripped of `<script>`, `<foreignObject>`, `javascript:` hrefs, and event-handler attributes before processing. Enforces a 10 MB per-file size limit.
+  - **Bundled static export**: The pre-built Next.js UI is copied into `src/SVG2DrawIOLib/web/` at release time and included in the Python wheel via hatchling artifacts — no Node.js required at runtime.
+  - **`[web]` optional dependency group**: `fastapi>=0.115.0`, `uvicorn[standard]>=0.32.0`, `python-multipart>=0.0.12`.
+  - **`svg2drawio` entry point**: Added as a shorter alias alongside `SVG2DrawIOLib` and `svg2drawiolib`.
+- **Web UI Makefile targets**: `make dev-api` (FastAPI with hot-reload), `make dev-web` (Next.js dev server), `make dev-all` (both together), `make build-web` (Next.js static export), `make build-release` (build + copy into package), `make start-web` (build then launch).
+
+### Fixed
+
+- **Windows `FileResponse` race condition** (`api/routers/`): All file-returning endpoints (`create`, `add`, `remove`, `rename`, `split-paths`) now use `Response(content=path.read_bytes())` instead of `FileResponse(path)`. `FileResponse` streams lazily — on Windows the `get_temp_dir()` dependency's `finally` cleanup block could delete the temp directory before the file body was streamed, causing "Failed to fetch" in the browser with no server-side error logged.
+- **Static build CORS mismatch** (`web-ui/src/lib/api.ts`): Changed the `API_BASE` fallback from `"http://localhost:8000"` to `""` so the static export uses relative URLs (`/api/create` instead of `http://localhost:8000/api/create`). This fixes "Failed to fetch" when the browser opens to `http://127.0.0.1:8000` (the CLI's default bind address) while the hardcoded URL pointed to `http://localhost:8000` — a cross-origin mismatch the CORS policy rejected.
+- **Dev-mode API routing** (`web-ui/next.config.ts`): Added a conditional dev-mode proxy rewrite that forwards `/api/*` to the FastAPI server (`http://localhost:8000`) when running `next dev`, so `make dev-all` works without a `.env.local` file. The rewrite is omitted during `next build` (static export does not support rewrites).
+- **Next.js RSC `__PAGE__.txt` 404s**: `make build-release` now renames RSC page payload files from their on-disk subdirectory form (`create/__next.create/__PAGE__.txt`) to the flat dot-separated form (`create/__next.create.__PAGE__.txt`) that the browser requests. Starlette's `StaticFiles` serves paths literally, so the mismatched filenames caused 404s that silently broke client-side navigation.
+- **Cross-platform `build-release` target**: Replaced Unix-only `rm -rf` and `cp -r` shell commands in the Makefile with a Python one-liner using `shutil.rmtree` and `shutil.copytree`, which works on Windows without Git Bash or WSL.
+
+### Changed
+
+- **`pyproject.toml`**: Added `[web]` optional dependency group; added `svg2drawio` script entry point; added `[tool.hatch.build.targets.wheel] artifacts` to include the gitignored `src/SVG2DrawIOLib/web/` directory in the built wheel.
+- **`.gitignore`**: Added `src/SVG2DrawIOLib/web/` (generated build artifact); removed stale `api/__pycache__/` entries from the old top-level `api/` directory.
+- **Documentation**: Updated `README.md`, `QUICKSTART.md`, and `ARCHITECTURE.md` to document the web UI feature, installation, tab-to-command mapping, developer build workflow, FastAPI sidecar architecture, and bundled static export path resolution.
+
 ## [1.2.1] - 2026-02-09
 
 ### Changed
@@ -203,5 +230,11 @@ The project follows SOLID principles with clear module boundaries:
 - `library_manager.py`: Library file management
 - `cli/`: Modular CLI with dynamic command loading
 
+[1.3.0]: https://github.com/jamesbconner/SVG2DrawIOLib/compare/v1.2.1...v1.3.0
+[1.2.1]: https://github.com/jamesbconner/SVG2DrawIOLib/compare/v1.2.0...v1.2.1
+[1.2.0]: https://github.com/jamesbconner/SVG2DrawIOLib/compare/v1.1.2...v1.2.0
+[1.1.2]: https://github.com/jamesbconner/SVG2DrawIOLib/compare/v1.1.1...v1.1.2
+[1.1.1]: https://github.com/jamesbconner/SVG2DrawIOLib/compare/v1.1.0...v1.1.1
+[1.1.0]: https://github.com/jamesbconner/SVG2DrawIOLib/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/jamesbconner/SVG2DrawIOLib/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/jamesbconner/SVG2DrawIOLib/releases/tag/v1.0.0

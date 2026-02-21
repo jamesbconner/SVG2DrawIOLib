@@ -6,6 +6,7 @@ include QUICKSTART.md
 include pyproject.toml
 
 recursive-include src *.py
+recursive-include src/SVG2DrawIOLib/web *
 recursive-include tests *.py
 
 exclude .gitignore

@@ -20,6 +20,7 @@ Convert SVG files into DrawIO/diagrams.net shape libraries with support for colo
 - 🎨 **Color Customization**: Inject CSS classes to enable color editing directly in DrawIO's interface
 - 📏 **Flexible Sizing**: Proportional scaling with aspect ratio preservation, or fixed dimensions
 - 📚 **Library Management**: Create new libraries, add/remove icons, and list contents
+- 🌐 **Browser-based Web UI**: All commands available in a local web interface — no command line required
 - 🚀 **Modern CLI**: Beautiful, colorful output with rich-click
 - 🔧 **Modern Python Stack**: Built with ruff, mypy, bandit, pytest, and pre-commit hooks
 
@@ -57,6 +58,54 @@ SVG2DrawIOLib create icons/ --css -o colorable-icons.xml
 # Custom dimensions with proportional scaling
 SVG2DrawIOLib create icons/ --max-size 64 -o large-icons.xml -R
 ```
+
+## Web UI
+
+All CLI commands are available as a browser-based interface. Install with the `web` optional dependencies and launch with a single command:
+
+```bash
+pip install 'SVG2DrawIOLib[web]'
+svg2drawio web
+```
+
+This starts a local FastAPI server and opens the UI automatically in your default browser at `http://127.0.0.1:8000`.
+
+**Available tabs:**
+
+| Tab | Equivalent CLI command |
+|-----|------------------------|
+| Create | `svg2drawio create` |
+| Manage (Add / Remove / Rename) | `svg2drawio add` / `remove` / `rename` |
+| Extract | `svg2drawio extract` |
+| Inspect | `svg2drawio inspect` |
+| Validate | `svg2drawio validate` |
+| Split Paths | `svg2drawio split-paths` |
+
+**Options:**
+
+```bash
+svg2drawio web --host 0.0.0.0   # Listen on all interfaces
+svg2drawio web --port 9000      # Custom port
+svg2drawio web --no-browser     # Don't open browser automatically
+```
+
+### Building from Source
+
+If you are working from a source checkout, build the Next.js frontend first, then launch:
+
+```bash
+make build-release   # builds web-ui/ and copies output into the Python package
+svg2drawio web
+```
+
+Or run the frontend and API separately during development:
+
+```bash
+make dev-api   # FastAPI on :8000  (terminal 1)
+make dev-web   # Next.js on :3000  (terminal 2)
+```
+
+---
 
 ## Documentation
 
