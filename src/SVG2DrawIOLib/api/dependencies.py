@@ -2,11 +2,11 @@
 
 import shutil
 import tempfile
+from collections.abc import AsyncGenerator
 from pathlib import Path
-from typing import AsyncGenerator
 
 
-async def get_temp_dir() -> AsyncGenerator[Path, None]:
+async def get_temp_dir() -> AsyncGenerator[Path]:
     """Provide a temporary directory that is cleaned up after the request.
 
     Yields:

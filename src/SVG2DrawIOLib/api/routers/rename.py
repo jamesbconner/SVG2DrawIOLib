@@ -40,7 +40,9 @@ async def rename_icon(
     lib_path = tmp / (library_file.filename or "library.xml")
     lib_path.write_bytes(await library_file.read())
 
-    _, was_overwritten = LibraryManager().rename_icon(lib_path, old_name, new_name, overwrite=overwrite)
+    _, was_overwritten = LibraryManager().rename_icon(
+        lib_path, old_name, new_name, overwrite=overwrite
+    )
 
     out_name = sanitize_filename(lib_path.stem) or "library"
     return Response(

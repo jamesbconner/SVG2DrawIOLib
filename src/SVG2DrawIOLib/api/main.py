@@ -9,7 +9,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from SVG2DrawIOLib.__about__ import __version__
-
 from SVG2DrawIOLib.api.exceptions import (
     file_not_found_handler,
     import_error_handler,
@@ -17,7 +16,16 @@ from SVG2DrawIOLib.api.exceptions import (
     value_error_handler,
 )
 from SVG2DrawIOLib.api.models.responses import HealthResponse
-from SVG2DrawIOLib.api.routers import add, create, extract, inspect, remove, rename, split_paths, validate
+from SVG2DrawIOLib.api.routers import (
+    add,
+    create,
+    extract,
+    inspect,
+    remove,
+    rename,
+    split_paths,
+    validate,
+)
 from SVG2DrawIOLib.api.routers import list as list_router
 
 app = FastAPI(
@@ -39,10 +47,10 @@ app.add_middleware(
 )
 
 # Exception handlers
-app.add_exception_handler(FileNotFoundError, file_not_found_handler)
-app.add_exception_handler(ValueError, value_error_handler)
-app.add_exception_handler(ET.ParseError, parse_error_handler)
-app.add_exception_handler(ImportError, import_error_handler)
+app.add_exception_handler(FileNotFoundError, file_not_found_handler)  # type: ignore[arg-type]
+app.add_exception_handler(ValueError, value_error_handler)  # type: ignore[arg-type]
+app.add_exception_handler(ET.ParseError, parse_error_handler)  # type: ignore[arg-type]
+app.add_exception_handler(ImportError, import_error_handler)  # type: ignore[arg-type]
 
 # Routers
 app.include_router(create.router, prefix="/api")

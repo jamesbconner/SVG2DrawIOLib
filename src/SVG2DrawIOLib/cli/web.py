@@ -27,7 +27,9 @@ _DEV_UI = Path("web-ui/out")
     envvar="SVG2DRAWIO_UI_DIR",
     help="Path to the pre-built Next.js static export directory.",
 )
-@rc.option("--no-browser", is_flag=True, default=False, help="Do not open the browser automatically.")
+@rc.option(
+    "--no-browser", is_flag=True, default=False, help="Do not open the browser automatically."
+)
 @rc.option("--verbose", "-v", is_flag=True, default=False)
 @rc.option("--quiet", "-q", is_flag=True, default=False)
 def web(
@@ -38,13 +40,15 @@ def web(
     verbose: bool,
     quiet: bool,
 ) -> None:
-    """Start the web UI (FastAPI API + built Next.js frontend).
+    """[bold cyan]Start the web UI (FastAPI API + built Next.js frontend)[/].
 
-    Install with web support and run:
+    \b
+    \nInstall with web support and run:
 
         pip install 'SVG2DrawIOLib[web]'
         svg2drawio web
 
+    \b
     Or build from source first:
 
         cd web-ui && npm run build
@@ -54,11 +58,10 @@ def web(
 
     try:
         import uvicorn  # noqa: PLC0415
-    except ImportError:
+    except ImportError as exc:
         raise rc.ClickException(
-            "uvicorn is not installed. Install with:\n\n"
-            "    pip install 'SVG2DrawIOLib[web]'"
-        )
+            "uvicorn is not installed. Install with:\n\n    pip install 'SVG2DrawIOLib[web]'"
+        ) from exc
 
     # Resolve the UI directory
     if ui_dir is not None:
@@ -83,6 +86,7 @@ def web(
     console.print("Press [bold]Ctrl+C[/bold] to stop.\n")
 
     if not no_browser:
+
         def _open() -> None:
             time.sleep(1.2)
             webbrowser.open(url)

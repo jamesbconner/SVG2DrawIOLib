@@ -38,7 +38,9 @@ async def inspect_library(
     try:
         names: list[str] = json.loads(icon_names)
     except json.JSONDecodeError as exc:
-        raise HTTPException(status_code=422, detail=f"icon_names must be a JSON array: {exc}") from exc
+        raise HTTPException(
+            status_code=422, detail=f"icon_names must be a JSON array: {exc}"
+        ) from exc
 
     lib_path = tmp / (library_file.filename or "library.xml")
     lib_path.write_bytes(await library_file.read())

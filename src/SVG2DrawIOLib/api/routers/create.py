@@ -8,7 +8,7 @@ from fastapi.responses import Response
 from SVG2DrawIOLib.api.dependencies import get_temp_dir
 from SVG2DrawIOLib.api.services.processing import build_processing_options, sanitize_svg_upload
 from SVG2DrawIOLib.cli.create_helpers import determine_sizing_strategy, process_svg_files
-from SVG2DrawIOLib.cli.helpers import sanitize_filename, safe_path_join
+from SVG2DrawIOLib.cli.helpers import safe_path_join, sanitize_filename
 from SVG2DrawIOLib.library_manager import LibraryManager
 
 router = APIRouter()
@@ -28,7 +28,7 @@ async def create_library(
     height: float | None = Form(None),
     max_size: float | None = Form(None),
     tmp: Path = Depends(get_temp_dir),
-) -> FileResponse:
+) -> Response:
     """Create a new DrawIO library from one or more SVG files.
 
     Args:

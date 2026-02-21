@@ -25,6 +25,8 @@ repos:
           - types-click
           - types-setuptools
           - pytest
+          - pydantic
+          - fastapi
         args: [--strict]
         files: ^(src|tests)/
 
