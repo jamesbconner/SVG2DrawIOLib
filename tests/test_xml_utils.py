@@ -3,8 +3,6 @@
 import base64
 import zlib
 
-import pytest
-
 from SVG2DrawIOLib.xml_utils import decode_drawio_xml
 
 
@@ -109,12 +107,7 @@ class TestDecodeDrawIOXML:
             "&lt;/mxGraphModel&gt;"
         )
         expected = (
-            b"<mxGraphModel>"
-            b"<root>"
-            b'<mxCell id="0"/>'
-            b'<mxCell id="1" parent="0"/>'
-            b"</root>"
-            b"</mxGraphModel>"
+            b'<mxGraphModel><root><mxCell id="0"/><mxCell id="1" parent="0"/></root></mxGraphModel>'
         )
 
         # Decode

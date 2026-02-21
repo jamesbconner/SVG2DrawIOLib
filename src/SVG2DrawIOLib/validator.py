@@ -182,9 +182,6 @@ class LibraryValidator:
             # Decode XML data (handles both compressed and URL-encoded formats)
             try:
                 decompressed = decode_drawio_xml(xml_data.encode("utf-8"))
-                is_compressed = b"compressed" in str(
-                    type(decompressed)
-                ).encode()  # Placeholder for format detection
             except ValueError as e:
                 issues.append(
                     {
