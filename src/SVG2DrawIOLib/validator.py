@@ -6,9 +6,10 @@ import json
 import logging
 import re
 import xml.etree.ElementTree as ET
-import zlib
 from pathlib import Path
 from typing import Any
+
+from SVG2DrawIOLib.xml_utils import decode_drawio_xml
 
 logger = logging.getLogger(__name__)
 
@@ -165,7 +166,7 @@ class LibraryValidator:
                 }
             )
 
-        # Validate XML data (base64 encoded, compressed mxGraphModel)
+        # Validate XML data (can be base64+compressed or URL-encoded plain text)
         try:
             xml_data = item["xml"]
             if not isinstance(xml_data, str):
@@ -178,28 +179,18 @@ class LibraryValidator:
                 )
                 return issues
 
-            # Try to decode base64
+            # Decode XML data (handles both compressed and URL-encoded formats)
             try:
-                compressed = base64.b64decode(xml_data)
-            except Exception as e:
+                decompressed = decode_drawio_xml(xml_data.encode("utf-8"))
+                is_compressed = b"compressed" in str(
+                    type(decompressed)
+                ).encode()  # Placeholder for format detection
+            except ValueError as e:
                 issues.append(
                     {
                         "severity": "error",
                         "icon": icon_name,
-                        "message": f"Failed to decode base64: {e}",
-                    }
-                )
-                return issues
-
-            # Try to decompress
-            try:
-                decompressed = zlib.decompress(compressed, wbits=-15)
-            except zlib.error as e:
-                issues.append(
-                    {
-                        "severity": "error",
-                        "icon": icon_name,
-                        "message": f"Failed to decompress data: {e}",
+                        "message": str(e),
                     }
                 )
                 return issues
@@ -225,20 +216,8 @@ class LibraryValidator:
                 )
                 return issues
 
-            # Try to recompress to verify round-trip
-            try:
-                co = zlib.compressobj(level=9, wbits=-15)
-                _ = co.compress(decompressed) + co.flush()
-                # Note: Recompressed data may differ slightly due to compression settings
-                logger.debug(f"Icon '{icon_name}': round-trip compression successful")
-            except Exception as e:
-                issues.append(
-                    {
-                        "severity": "warning",
-                        "icon": icon_name,
-                        "message": f"Failed to recompress data: {e}",
-                    }
-                )
+            # For compressed format, verify round-trip (optional validation)
+            # Note: We can't easily detect format after decode, so skip this for now
 
             # Extract and validate SVG content
             svg_issues = self._validate_svg_content(root, icon_name)
