@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, UploadFile
 
 from SVG2DrawIOLib.api.dependencies import get_temp_dir
 from SVG2DrawIOLib.api.models.responses import IconIssue, ValidateResponse, ValidationChecks
+from SVG2DrawIOLib.cli.helpers import safe_path_join
 from SVG2DrawIOLib.validator import LibraryValidator
 
 router = APIRouter()
@@ -28,7 +29,7 @@ async def validate_library(
     Returns:
         Structured validation report.
     """
-    lib_path = tmp / (library_file.filename or "library.xml")
+    lib_path = safe_path_join(tmp, library_file.filename or "library.xml")
     lib_path.write_bytes(await library_file.read())
 
     result = LibraryValidator().validate(lib_path)

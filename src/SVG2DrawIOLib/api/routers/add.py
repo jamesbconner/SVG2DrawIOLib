@@ -52,7 +52,7 @@ async def add_icons(
     Returns:
         Response containing the updated .xml library file.
     """
-    lib_path = tmp / (library_file.filename or "library.xml")
+    lib_path = safe_path_join(tmp, library_file.filename or "library.xml")
     lib_path.write_bytes(await library_file.read())
 
     svg_dir = tmp / "svgs"
@@ -60,9 +60,9 @@ async def add_icons(
 
     for upload in svg_files:
         content = await upload.read()
-        sanitize_svg_upload(content)
+        sanitized_content = sanitize_svg_upload(content)
         dest = safe_path_join(svg_dir, upload.filename or "upload.svg")
-        dest.write_bytes(content)
+        dest.write_bytes(sanitized_content)
 
     svg_paths = list(svg_dir.glob("*.svg"))
 

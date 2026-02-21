@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile
 from fastapi.responses import Response
 
 from SVG2DrawIOLib.api.dependencies import get_temp_dir
-from SVG2DrawIOLib.cli.helpers import sanitize_filename
+from SVG2DrawIOLib.cli.helpers import safe_path_join, sanitize_filename
 from SVG2DrawIOLib.library_manager import LibraryManager
 
 router = APIRouter()
@@ -40,7 +40,7 @@ async def remove_icons(
             status_code=422, detail=f"icon_names must be a JSON array: {exc}"
         ) from exc
 
-    lib_path = tmp / (library_file.filename or "library.xml")
+    lib_path = safe_path_join(tmp, library_file.filename or "library.xml")
     lib_path.write_bytes(await library_file.read())
 
     _, removed_count = LibraryManager().remove_icons_from_library(lib_path, names)

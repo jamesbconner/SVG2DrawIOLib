@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Form, UploadFile
 from fastapi.responses import Response
 
 from SVG2DrawIOLib.api.dependencies import get_temp_dir
-from SVG2DrawIOLib.cli.helpers import sanitize_filename
+from SVG2DrawIOLib.cli.helpers import safe_path_join, sanitize_filename
 from SVG2DrawIOLib.library_manager import LibraryManager
 
 router = APIRouter()
@@ -37,7 +37,7 @@ async def rename_icon(
     Raises:
         HTTPException: 409 if new_name already exists and overwrite is False.
     """
-    lib_path = tmp / (library_file.filename or "library.xml")
+    lib_path = safe_path_join(tmp, library_file.filename or "library.xml")
     lib_path.write_bytes(await library_file.read())
 
     _, was_overwritten = LibraryManager().rename_icon(

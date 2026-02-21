@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, UploadFile
 
 from SVG2DrawIOLib.api.dependencies import get_temp_dir
 from SVG2DrawIOLib.api.models.responses import ListResponse
+from SVG2DrawIOLib.cli.helpers import safe_path_join
 from SVG2DrawIOLib.library_manager import LibraryManager
 
 router = APIRouter()
@@ -25,7 +26,7 @@ async def list_icons(
     Returns:
         List of icon names and total count.
     """
-    lib_path = tmp / (library_file.filename or "library.xml")
+    lib_path = safe_path_join(tmp, library_file.filename or "library.xml")
     lib_path.write_bytes(await library_file.read())
 
     icon_names = LibraryManager().list_icons(lib_path)

@@ -80,6 +80,11 @@ def web(
             "    cd web-ui && npm run build"
         )
 
+    # Propagate UI directory to FastAPI app via environment variable
+    import os
+
+    os.environ["SVG2DRAWIO_UI_DIR"] = str(ui_path.resolve())
+
     url = f"http://{host}:{port}"
     console.print(f"[bold green]SVG2DrawIO Web UI[/bold green]  →  {url}")
     console.print(f"Serving UI from [dim]{ui_path.resolve()}[/dim]")

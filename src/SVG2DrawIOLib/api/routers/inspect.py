@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile
 
 from SVG2DrawIOLib.api.dependencies import get_temp_dir
 from SVG2DrawIOLib.api.models.responses import IconInfo, InspectResponse
+from SVG2DrawIOLib.cli.helpers import safe_path_join
 from SVG2DrawIOLib.icon_analyzer import IconAnalyzer
 from SVG2DrawIOLib.library_manager import LibraryManager
 
@@ -42,7 +43,7 @@ async def inspect_library(
             status_code=422, detail=f"icon_names must be a JSON array: {exc}"
         ) from exc
 
-    lib_path = tmp / (library_file.filename or "library.xml")
+    lib_path = safe_path_join(tmp, library_file.filename or "library.xml")
     lib_path.write_bytes(await library_file.read())
 
     icons = LibraryManager().load_library(lib_path)

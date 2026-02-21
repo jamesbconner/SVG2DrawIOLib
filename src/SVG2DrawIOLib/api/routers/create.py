@@ -53,9 +53,9 @@ async def create_library(
 
     for upload in svg_files:
         content = await upload.read()
-        sanitize_svg_upload(content)
+        sanitized_content = sanitize_svg_upload(content)
         dest = safe_path_join(svg_dir, upload.filename or "upload.svg")
-        dest.write_bytes(content)
+        dest.write_bytes(sanitized_content)
 
     svg_paths = list(svg_dir.glob("*.svg"))
 

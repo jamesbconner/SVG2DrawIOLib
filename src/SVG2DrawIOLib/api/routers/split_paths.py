@@ -6,7 +6,8 @@ from fastapi import APIRouter, Depends, UploadFile
 from fastapi.responses import Response
 
 from SVG2DrawIOLib.api.dependencies import get_temp_dir
-from SVG2DrawIOLib.cli.helpers import sanitize_filename
+from SVG2DrawIOLib.api.services.processing import sanitize_svg_upload
+from SVG2DrawIOLib.cli.helpers import safe_path_join, sanitize_filename
 from SVG2DrawIOLib.path_splitter import PathSplitter
 
 router = APIRouter()
@@ -35,8 +36,9 @@ async def split_paths(
         - ``X-Holes-Preserved``: number of inner paths preserved as groups
     """
     content = await svg_file.read()
-    in_path = tmp / (svg_file.filename or "input.svg")
-    in_path.write_bytes(content)
+    sanitized_content = sanitize_svg_upload(content)
+    in_path = safe_path_join(tmp, svg_file.filename or "input.svg")
+    in_path.write_bytes(sanitized_content)
 
     stem = sanitize_filename(in_path.stem) or "output"
     out_path = tmp / f"{stem}-split.svg"
