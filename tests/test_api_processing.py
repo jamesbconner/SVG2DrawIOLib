@@ -182,56 +182,90 @@ class TestSanitizeSvgUpload:
         assert "<ns0:rect" not in result_str
 
     def test_strips_data_uri_hrefs(self) -> None:
-        """Test that data: URIs are stripped from href attributes (Bug #20)."""
+        """Test that dangerous data: URIs are stripped from href attributes (Bug #20, #27)."""
         # Test data:text/html with script (using HTML entities to avoid XML parsing issues)
         svg = b'<svg><a href="data:text/html,%3Cscript%3Ealert(1)%3C/script%3E"><rect/></a></svg>'
         result = sanitize_svg_upload(svg)
-        assert b"data:" not in result
+        assert b"data:text/html" not in result
         assert b"<a" in result
         assert b"<rect" in result
 
-        # Test data:image/svg+xml
-        svg = b'<svg><a href="data:image/svg+xml,test"><rect/></a></svg>'
+        # Test data:text/javascript
+        svg = b'<svg><a href="data:text/javascript,alert(1)"><rect/></a></svg>'
         result = sanitize_svg_upload(svg)
-        assert b"data:" not in result
+        assert b"data:text/javascript" not in result
         assert b"<a" in result
 
-        # Test with base64 encoded data URI
+        # Test with base64 encoded HTML data URI
         svg = b'<svg><a href="data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg=="><rect/></a></svg>'
         result = sanitize_svg_upload(svg)
-        assert b"data:" not in result
+        assert b"data:text/html" not in result
 
     def test_strips_data_uri_xlink_href(self) -> None:
-        """Test that data: URIs are stripped from xlink:href attributes (Bug #20)."""
+        """Test that dangerous data: URIs are stripped from xlink:href attributes (Bug #20, #27)."""
         svg = b'<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><use xlink:href="data:text/html,test"/></svg>'
         result = sanitize_svg_upload(svg)
-        assert b"data:" not in result
+        assert b"data:text/html" not in result
 
     def test_strips_data_uri_src(self) -> None:
-        """Test that data: URIs are stripped from src attributes (Bug #20)."""
+        """Test that dangerous data: URIs are stripped from src attributes (Bug #20, #27)."""
         svg = b'<svg><image src="data:text/html,test"/></svg>'
         result = sanitize_svg_upload(svg)
-        assert b"data:" not in result
+        assert b"data:text/html" not in result
 
     def test_strips_data_uri_with_whitespace(self) -> None:
-        """Test that data: URIs with leading whitespace are stripped (Bug #20)."""
+        """Test that dangerous data: URIs with leading whitespace are stripped (Bug #20, #27)."""
         svg = b'<svg><a href=" data:text/html,test"><rect/></a></svg>'
         result = sanitize_svg_upload(svg)
-        assert b"data:" not in result
+        assert b"data:text/html" not in result
 
     def test_strips_data_uri_case_insensitive(self) -> None:
-        """Test that data: URIs are stripped regardless of case (Bug #20)."""
+        """Test that dangerous data: URIs are stripped regardless of case (Bug #20, #27)."""
         # Test uppercase
-        svg = b'<svg><a href="DATA:text/html,test"><rect/></a></svg>'
+        svg = b'<svg><a href="DATA:TEXT/HTML,test"><rect/></a></svg>'
         result = sanitize_svg_upload(svg)
-        assert b"DATA:" not in result
-        assert b"data:" not in result
+        result_str = result.decode("utf-8")
+        assert "data:text/html" not in result_str.lower()
 
         # Test mixed case
-        svg = b'<svg><a href="DaTa:text/html,test"><rect/></a></svg>'
+        svg = b'<svg><a href="DaTa:TeXt/HtMl,test"><rect/></a></svg>'
         result = sanitize_svg_upload(svg)
-        assert b"DaTa:" not in result
-        assert b"data:" not in result
+        result_str = result.decode("utf-8")
+        assert "data:text/html" not in result_str.lower()
+
+    def test_preserves_safe_image_data_uris(self) -> None:
+        """Test that safe image data: URIs are preserved (Bug #27)."""
+        # Test data:image/png
+        svg = b'<svg><image href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="/></svg>'
+        result = sanitize_svg_upload(svg)
+        assert b"data:image/png" in result
+
+        # Test data:image/jpeg
+        svg = b'<svg><image href="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCwAA8A/9k="/></svg>'
+        result = sanitize_svg_upload(svg)
+        assert b"data:image/jpeg" in result
+
+        # Test data:image/svg+xml
+        svg = b'<svg><image href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Crect%2F%3E%3C%2Fsvg%3E"/></svg>'
+        result = sanitize_svg_upload(svg)
+        assert b"data:image/svg+xml" in result
+
+        # Test data:image/gif
+        svg = b'<svg><image href="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"/></svg>'
+        result = sanitize_svg_upload(svg)
+        assert b"data:image/gif" in result
+
+    def test_strips_javascript_application_data_uris(self) -> None:
+        """Test that application/javascript data: URIs are stripped (Bug #27)."""
+        # Test data:application/javascript
+        svg = b'<svg><a href="data:application/javascript,alert(1)"><rect/></a></svg>'
+        result = sanitize_svg_upload(svg)
+        assert b"data:application/javascript" not in result
+
+        # Test data:application/x-javascript
+        svg = b'<svg><a href="data:application/x-javascript,alert(1)"><rect/></a></svg>'
+        result = sanitize_svg_upload(svg)
+        assert b"data:application/x-javascript" not in result
 
 
 class TestBuildProcessingOptions:

@@ -19,21 +19,41 @@ _EVENT_HANDLER_PREFIX = "on"  # onclick, onload, onerror, etc.
 
 _JAVASCRIPT_URI_ATTRS = {"href", "xlink:href", "src"}
 
-# Dangerous URI schemes that can execute scripts or load external content
-_DANGEROUS_URI_SCHEMES = {"javascript:", "data:"}
+# Dangerous data: URI MIME types that can execute scripts
+# Safe image types (image/png, image/jpeg, image/svg+xml, etc.) are allowed
+_DANGEROUS_DATA_URI_TYPES = {
+    "data:text/html",
+    "data:text/javascript",
+    "data:application/javascript",
+    "data:application/x-javascript",
+}
 
 
 def _has_dangerous_uri(value: str) -> bool:
     """Check if a URI value contains a dangerous scheme.
 
+    Blocks javascript: URIs and dangerous data: URIs (text/html, javascript).
+    Allows safe data: URIs like data:image/png;base64,... for embedded images.
+
     Args:
         value: The attribute value to check.
 
     Returns:
-        True if the value starts with a dangerous URI scheme.
+        True if the value contains a dangerous URI scheme.
     """
     normalized = value.strip().lower()
-    return any(normalized.startswith(scheme) for scheme in _DANGEROUS_URI_SCHEMES)
+
+    # Block javascript: URIs
+    if normalized.startswith("javascript:"):
+        return True
+
+    # Block dangerous data: URIs (HTML, JavaScript) but allow safe image data URIs
+    if normalized.startswith("data:"):
+        return any(
+            normalized.startswith(dangerous_type) for dangerous_type in _DANGEROUS_DATA_URI_TYPES
+        )
+
+    return False
 
 
 def sanitize_svg_upload(content: bytes) -> bytes:
