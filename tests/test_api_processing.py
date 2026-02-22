@@ -166,6 +166,21 @@ class TestSanitizeSvgUpload:
         assert exc_info.value.status_code == 422
         assert "does not appear to be an SVG" in exc_info.value.detail
 
+    def test_preserves_svg_namespace_without_prefix(self) -> None:
+        """Test that SVG namespace is preserved without ns0: prefix (Bug #16)."""
+        svg = b'<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="50" height="50"/></svg>'
+        result = sanitize_svg_upload(svg)
+        result_str = result.decode("utf-8")
+
+        # Should have <svg> not <ns0:svg>
+        assert "<svg" in result_str
+        assert "<ns0:svg" not in result_str
+        assert "ns0:" not in result_str
+
+        # Should have <rect> not <ns0:rect>
+        assert "<rect" in result_str
+        assert "<ns0:rect" not in result_str
+
 
 class TestBuildProcessingOptions:
     """Tests for building SVG processing options."""

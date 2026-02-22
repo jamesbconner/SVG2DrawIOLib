@@ -57,6 +57,9 @@ def sanitize_svg_upload(content: bytes) -> bytes:
     # Strip dangerous elements and attributes from entire tree
     _strip_dangerous_content(root)
 
+    # Register SVG namespace to avoid ns0: prefixes in serialization
+    ET.register_namespace("", "http://www.w3.org/2000/svg")
+
     return ET.tostring(root, encoding="unicode").encode("utf-8")
 
 
