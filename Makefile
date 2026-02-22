@@ -1,4 +1,4 @@
-.PHONY: help install dev test lint format type security cov build check-dist clean clean-win zip all pre-commit run
+.PHONY: help install dev test lint format type security cov build check-dist clean clean-win zip all pre-commit run dev-api dev-web build-web start-web build-release
 
 help: ## Show this help message
 	@echo "Available targets:"
@@ -64,3 +64,23 @@ zip: ## Create a source archive respecting .gitignore
 
 run: ## Run the CLI (use ARGS="..." to pass arguments)
 	SVG2DrawIOLib $(ARGS)
+
+dev-api: ## Start FastAPI API server (from repo root)
+	uv pip install -e ".[web]"
+	uv run uvicorn SVG2DrawIOLib.api.main:app --reload --port 8000
+
+dev-web: ## Start Next.js UI dev server
+	cd web-ui && npm run dev
+
+dev-all: ## Start FastAPI API and Next.js UI (Unix only)
+	uv run uvicorn SVG2DrawIOLib.api.main:app --reload --port 8000 &
+	cd web-ui && npm run dev
+
+build-web: ## Build Next.js static export into web-ui/out/ (required before svg2drawio web)
+	cd web-ui && npm run build
+
+build-release: build-web ## Build Next.js UI and copy into the Python package for distribution
+	uv run python -c "import shutil,pathlib; w=pathlib.Path('src/SVG2DrawIOLib/web'); shutil.rmtree(w,ignore_errors=True); shutil.copytree('web-ui/out',w); [(p.rename(p.parent.parent/(p.parent.name+'.__PAGE__.txt')),p.parent.rmdir()) for p in list(w.rglob('__PAGE__.txt')) if p.parent.name.startswith('__next.')]"
+
+start-web: build-web ## Build then launch the web UI via the CLI (opens browser)
+	svg2drawio web

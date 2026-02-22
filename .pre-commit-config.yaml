@@ -25,7 +25,9 @@ repos:
           - types-click
           - types-setuptools
           - pytest
-        args: [--strict]
+          - pydantic
+          - fastapi
+        args: [--strict, --no-warn-unused-ignores]
         files: ^(src|tests)/
 
   - repo: https://github.com/PyCQA/bandit

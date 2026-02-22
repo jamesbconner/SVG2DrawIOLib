@@ -1,0 +1,27 @@
+"""Exception handlers for the FastAPI application."""
+
+import xml.etree.ElementTree as ET
+
+from fastapi import Request
+from fastapi.responses import JSONResponse
+
+
+class ConflictError(Exception):
+    """Exception raised when a resource conflict occurs (e.g., duplicate name)."""
+
+    pass
+
+
+async def file_not_found_handler(_request: Request, exc: FileNotFoundError) -> JSONResponse:
+    """Handle FileNotFoundError as HTTP 404."""
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+async def conflict_error_handler(_request: Request, exc: ConflictError) -> JSONResponse:
+    """Handle ConflictError as HTTP 409."""
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
+async def parse_error_handler(_request: Request, exc: ET.ParseError) -> JSONResponse:
+    """Handle XML ParseError as HTTP 422."""
+    return JSONResponse(status_code=422, content={"detail": f"Invalid XML: {exc}"})

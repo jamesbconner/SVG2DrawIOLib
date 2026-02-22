@@ -39,13 +39,13 @@ debug/
 /test_*.xml
 /test_*.py
 
+# Bundled web UI (built artifact — not source)
+src/SVG2DrawIOLib/web/
+
 # web-ui (Next.js)
 web-ui/node_modules/
 web-ui/.next/
 web-ui/out/
 web-ui/.env.local
 web-ui/.env*.local
-
-# api (FastAPI)
-api/__pycache__/
-api/**/__pycache__/
+!web-ui/.env.production

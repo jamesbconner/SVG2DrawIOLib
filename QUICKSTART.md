@@ -231,6 +231,41 @@ Options:
   -q, --quiet             Suppress output except errors
 ```
 
+## Web UI
+
+### Installation
+```bash
+pip install "SVG2DrawIOLib[web]"
+```
+
+### Launch
+```bash
+svg2drawio web
+# Opens http://127.0.0.1:8000 in your browser automatically
+```
+
+### Options
+```bash
+svg2drawio web --port 9000          # Use a different port
+svg2drawio web --host 0.0.0.0       # Listen on all interfaces
+svg2drawio web --no-browser         # Don't auto-open the browser
+svg2drawio web --ui-dir /path/to/ui # Use a custom pre-built UI directory
+```
+
+### Tabs
+| Tab | Equivalent CLI Command |
+|-----|----------------------|
+| Create | `svg2drawio create` |
+| Manage → Add Icons | `svg2drawio add` |
+| Manage → Remove Icons | `svg2drawio remove` |
+| Manage → Rename Icon | `svg2drawio rename` |
+| Extract | `svg2drawio extract` |
+| Inspect | `svg2drawio inspect` |
+| Validate | `svg2drawio validate` |
+| Split Paths | `svg2drawio split-paths` |
+
+---
+
 ## For Developers
 
 ### Setup
@@ -266,6 +301,24 @@ make check-dist # Build and check distribution
 make all        # Run all checks
 make clean      # Clean build artifacts
 ```
+
+### Web UI Development
+```bash
+# Install web dependencies and start FastAPI + Next.js dev servers
+make dev-api    # FastAPI only on port 8000 (with --reload)
+make dev-web    # Next.js dev server only (port 3000)
+
+# Build the static export and copy into the Python package
+make build-release   # Runs npm build + copies output to src/SVG2DrawIOLib/web/
+
+# Build and launch the web UI from the source tree
+make start-web
+```
+
+The `web-ui/` directory contains the Next.js frontend source. The built static export
+is copied to `src/SVG2DrawIOLib/web/` (gitignored — generated artifact) for bundling
+into the Python wheel via `make build-release`. The FastAPI server at
+`SVG2DrawIOLib.api.main:app` serves both the API (`/api/*`) and the static UI (`/`).
 
 ### Running Tests
 ```bash
