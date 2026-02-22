@@ -25,11 +25,3 @@ async def conflict_error_handler(_request: Request, exc: ConflictError) -> JSONR
 async def parse_error_handler(_request: Request, exc: ET.ParseError) -> JSONResponse:
     """Handle XML ParseError as HTTP 422."""
     return JSONResponse(status_code=422, content={"detail": f"Invalid XML: {exc}"})
-
-
-async def import_error_handler(_request: Request, exc: ImportError) -> JSONResponse:
-    """Handle ImportError (missing optional dependency) as HTTP 503."""
-    return JSONResponse(
-        status_code=503,
-        content={"detail": f"Required dependency not available: {exc}"},
-    )

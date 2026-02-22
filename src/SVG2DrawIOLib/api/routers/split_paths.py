@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from fastapi.responses import Response
 
 from SVG2DrawIOLib.api.dependencies import get_temp_dir
@@ -43,7 +43,11 @@ async def split_paths(
     stem = sanitize_filename(in_path.stem) or "output"
     out_path = tmp / f"{stem}-split.svg"
 
-    stats = PathSplitter().split_svg_paths(in_path, out_path)
+    try:
+        stats = PathSplitter().split_svg_paths(in_path, out_path)
+    except ImportError as exc:
+        # svgelements library is required for path splitting
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
 
     return Response(
         content=out_path.read_bytes(),

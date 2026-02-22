@@ -19,6 +19,22 @@ _EVENT_HANDLER_PREFIX = "on"  # onclick, onload, onerror, etc.
 
 _JAVASCRIPT_URI_ATTRS = {"href", "xlink:href", "src"}
 
+# Dangerous URI schemes that can execute scripts or load external content
+_DANGEROUS_URI_SCHEMES = {"javascript:", "data:"}
+
+
+def _has_dangerous_uri(value: str) -> bool:
+    """Check if a URI value contains a dangerous scheme.
+
+    Args:
+        value: The attribute value to check.
+
+    Returns:
+        True if the value starts with a dangerous URI scheme.
+    """
+    normalized = value.strip().lower()
+    return any(normalized.startswith(scheme) for scheme in _DANGEROUS_URI_SCHEMES)
+
 
 def sanitize_svg_upload(content: bytes) -> bytes:
     """Sanitize uploaded SVG content to remove dangerous elements.
@@ -77,13 +93,12 @@ def _strip_dangerous_content(element: ET.Element) -> None:
             to_remove.append(child)
             continue
 
-        # Strip event handler attributes and javascript: hrefs
+        # Strip event handler attributes and dangerous URIs
         attrs_to_remove = []
         for attr, value in child.attrib.items():
             local_attr = attr.split("}")[-1] if "}" in attr else attr
             if local_attr.lower().startswith(_EVENT_HANDLER_PREFIX) or (
-                local_attr.lower() in _JAVASCRIPT_URI_ATTRS
-                and value.strip().lower().startswith("javascript:")
+                local_attr.lower() in _JAVASCRIPT_URI_ATTRS and _has_dangerous_uri(value)
             ):
                 attrs_to_remove.append(attr)
 
@@ -101,8 +116,7 @@ def _strip_dangerous_content(element: ET.Element) -> None:
     for attr, value in element.attrib.items():
         local_attr = attr.split("}")[-1] if "}" in attr else attr
         if local_attr.lower().startswith(_EVENT_HANDLER_PREFIX) or (
-            local_attr.lower() in _JAVASCRIPT_URI_ATTRS
-            and value.strip().lower().startswith("javascript:")
+            local_attr.lower() in _JAVASCRIPT_URI_ATTRS and _has_dangerous_uri(value)
         ):
             attrs_to_remove.append(attr)
 

@@ -13,7 +13,6 @@ from SVG2DrawIOLib.api.exceptions import (
     ConflictError,
     conflict_error_handler,
     file_not_found_handler,
-    import_error_handler,
     parse_error_handler,
 )
 from SVG2DrawIOLib.api.models.responses import HealthResponse
@@ -52,8 +51,9 @@ app.add_exception_handler(FileNotFoundError, file_not_found_handler)  # type: ig
 app.add_exception_handler(ConflictError, conflict_error_handler)  # type: ignore[arg-type]
 # Note: ValueError is NOT handled globally to avoid masking internal processing errors.
 # Endpoints should catch and handle ValueError explicitly when it represents user input validation.
+# Note: ImportError is NOT handled globally to avoid masking genuine import bugs.
+# The split_paths endpoint explicitly catches ImportError for missing optional dependencies.
 app.add_exception_handler(ET.ParseError, parse_error_handler)  # type: ignore[arg-type]
-app.add_exception_handler(ImportError, import_error_handler)  # type: ignore[arg-type]
 
 # Routers
 app.include_router(create.router, prefix="/api")
