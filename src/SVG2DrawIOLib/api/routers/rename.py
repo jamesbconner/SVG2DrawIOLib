@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, Form, UploadFile
+from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile
 from fastapi.responses import Response
 
 from SVG2DrawIOLib.api.dependencies import get_temp_dir
@@ -46,10 +46,16 @@ async def rename_icon(
             lib_path, old_name, new_name, overwrite=overwrite
         )
     except ValueError as exc:
+        error_msg = str(exc)
         # Check if this is a conflict error (icon already exists)
-        if "already exists" in str(exc):
-            raise ConflictError(str(exc)) from exc
-        # Otherwise, it's a validation error (400)
+        if "already exists" in error_msg:
+            raise ConflictError(error_msg) from exc
+        # Check if this is a validation error (empty names, not found, etc.)
+        if any(
+            phrase in error_msg for phrase in ["cannot be empty", "not found", "Library is empty"]
+        ):
+            raise HTTPException(status_code=400, detail=error_msg) from exc
+        # Otherwise, it's an internal error - let it propagate as 500
         raise
 
     out_name = sanitize_filename(lib_path.stem) or "library"

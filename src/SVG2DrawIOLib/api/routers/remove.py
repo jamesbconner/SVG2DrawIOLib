@@ -43,7 +43,15 @@ async def remove_icons(
     lib_path = safe_path_join(tmp, library_file.filename or "library.xml")
     lib_path.write_bytes(await library_file.read())
 
-    _, removed_count = LibraryManager().remove_icons_from_library(lib_path, names)
+    try:
+        _, removed_count = LibraryManager().remove_icons_from_library(lib_path, names)
+    except ValueError as exc:
+        error_msg = str(exc)
+        # Library format/parsing errors should return 422
+        if "Invalid library" in error_msg:
+            raise HTTPException(status_code=422, detail=error_msg) from exc
+        # Otherwise, it's an internal error - let it propagate as 500
+        raise
 
     out_name = sanitize_filename(lib_path.stem) or "library"
     return Response(

@@ -15,7 +15,6 @@ from SVG2DrawIOLib.api.exceptions import (
     file_not_found_handler,
     import_error_handler,
     parse_error_handler,
-    value_error_handler,
 )
 from SVG2DrawIOLib.api.models.responses import HealthResponse
 from SVG2DrawIOLib.api.routers import (
@@ -51,7 +50,8 @@ app.add_middleware(
 # Exception handlers
 app.add_exception_handler(FileNotFoundError, file_not_found_handler)  # type: ignore[arg-type]
 app.add_exception_handler(ConflictError, conflict_error_handler)  # type: ignore[arg-type]
-app.add_exception_handler(ValueError, value_error_handler)  # type: ignore[arg-type]
+# Note: ValueError is NOT handled globally to avoid masking internal processing errors.
+# Endpoints should catch and handle ValueError explicitly when it represents user input validation.
 app.add_exception_handler(ET.ParseError, parse_error_handler)  # type: ignore[arg-type]
 app.add_exception_handler(ImportError, import_error_handler)  # type: ignore[arg-type]
 

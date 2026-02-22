@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, Form, UploadFile
+from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile
 from fastapi.responses import Response
 
 from SVG2DrawIOLib.api.dependencies import get_temp_dir
@@ -70,12 +70,20 @@ async def add_icons(
     max_dim, _ = determine_sizing_strategy(width, height, max_size)
     new_icons = process_svg_files(svg_paths, options, width, height, max_dim)
 
-    LibraryManager().add_icons_to_library(
-        lib_path,
-        new_icons,
-        replace_duplicates=replace_duplicates,
-        add_duplicates=add_duplicates,
-    )
+    try:
+        LibraryManager().add_icons_to_library(
+            lib_path,
+            new_icons,
+            replace_duplicates=replace_duplicates,
+            add_duplicates=add_duplicates,
+        )
+    except ValueError as exc:
+        error_msg = str(exc)
+        # Library format/parsing errors should return 422
+        if "Invalid library" in error_msg:
+            raise HTTPException(status_code=422, detail=error_msg) from exc
+        # Otherwise, it's an internal error - let it propagate as 500
+        raise
 
     out_name = sanitize_filename(lib_path.stem) or "library"
     return Response(
