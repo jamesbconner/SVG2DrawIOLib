@@ -5,11 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.4] - 2026-02-22
+
+### Fixed
+
+- **PyPI wheel packaging**: Fixed project build file to remove web includes/excludes that were breaking CI/CD
+
+### Changed
+
+- **`Makefile`**: Simplified `build-release` target to remove `.gitkeep` preservation logic since the placeholder is not needed in distribution builds.
+
+
 ## [1.3.3] - 2026-02-22
 
 ### Fixed
 
-- **PyPI wheel packaging**: Fixed duplicate `.gitkeep` file in wheel that caused PyPI upload rejection. Changed wheel build configuration to use `only-include` for Python files, preventing the `.gitkeep` placeholder from being included via the `packages` directive while still allowing it through `force-include`.
+- **PyPI wheel packaging**: Fixed duplicate `.gitkeep` file in wheel that caused PyPI upload rejection. Modified `build-release` Makefile target to not preserve the `.gitkeep` placeholder file when copying web UI build artifacts, as it's only needed for development and editable installs.
+
+### Changed
+
+- **`Makefile`**: Simplified `build-release` target to remove `.gitkeep` preservation logic since the placeholder is not needed in distribution builds.
 
 ## [1.3.2] - 2026-02-22
 
