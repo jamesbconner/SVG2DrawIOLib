@@ -289,6 +289,35 @@ class TestRemoveEndpoint:
         assert "must be a JSON array" in response.json()["detail"]
         assert "dict" in response.json()["detail"]
 
+    def test_remove_non_string_elements(self, simple_library: Path) -> None:
+        """Test that non-string list elements are rejected (Bug #26)."""
+        with open(simple_library, "rb") as f:
+            files = [("library_file", ("test.xml", f, "application/xml"))]
+            # Test with dict in list
+            data = {"icon_names": json.dumps([{"name": "test"}])}
+            response = client.post("/api/remove", files=files, data=data)
+        assert response.status_code == 422
+        assert "must contain only strings" in response.json()["detail"]
+        assert "dict" in response.json()["detail"]
+
+        with open(simple_library, "rb") as f:
+            files = [("library_file", ("test.xml", f, "application/xml"))]
+            # Test with number in list
+            data = {"icon_names": json.dumps([123])}
+            response = client.post("/api/remove", files=files, data=data)
+        assert response.status_code == 422
+        assert "must contain only strings" in response.json()["detail"]
+        assert "int" in response.json()["detail"]
+
+        with open(simple_library, "rb") as f:
+            files = [("library_file", ("test.xml", f, "application/xml"))]
+            # Test with mixed types
+            data = {"icon_names": json.dumps(["valid", 123, "another"])}
+            response = client.post("/api/remove", files=files, data=data)
+        assert response.status_code == 422
+        assert "must contain only strings" in response.json()["detail"]
+        assert "index 1" in response.json()["detail"]
+
 
 class TestRenameEndpoint:
     """Tests for rename icon endpoint."""

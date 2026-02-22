@@ -165,7 +165,7 @@ def parse_icon_names(icon_names_json: str) -> list[str]:
         List of icon names.
 
     Raises:
-        HTTPException: 422 if the JSON is invalid or not a list.
+        HTTPException: 422 if the JSON is invalid, not a list, or contains non-string elements.
     """
     import json
 
@@ -176,6 +176,13 @@ def parse_icon_names(icon_names_json: str) -> list[str]:
                 status_code=422,
                 detail=f"icon_names must be a JSON array, got {type(names_parsed).__name__}",
             )
+        # Validate that all elements are strings
+        for i, item in enumerate(names_parsed):
+            if not isinstance(item, str):
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"icon_names must contain only strings, got {type(item).__name__} at index {i}",
+                )
         return names_parsed
     except json.JSONDecodeError as exc:
         raise HTTPException(
