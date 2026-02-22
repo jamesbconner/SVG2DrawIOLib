@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, Form, UploadFile
 from fastapi.responses import Response
 
 from SVG2DrawIOLib.api.dependencies import get_temp_dir
+from SVG2DrawIOLib.api.exceptions import ConflictError
 from SVG2DrawIOLib.cli.helpers import safe_path_join, sanitize_filename
 from SVG2DrawIOLib.library_manager import LibraryManager
 
@@ -40,9 +41,16 @@ async def rename_icon(
     lib_path = safe_path_join(tmp, library_file.filename or "library.xml")
     lib_path.write_bytes(await library_file.read())
 
-    _, was_overwritten = LibraryManager().rename_icon(
-        lib_path, old_name, new_name, overwrite=overwrite
-    )
+    try:
+        _, was_overwritten = LibraryManager().rename_icon(
+            lib_path, old_name, new_name, overwrite=overwrite
+        )
+    except ValueError as exc:
+        # Check if this is a conflict error (icon already exists)
+        if "already exists" in str(exc):
+            raise ConflictError(str(exc)) from exc
+        # Otherwise, it's a validation error (400)
+        raise
 
     out_name = sanitize_filename(lib_path.stem) or "library"
     return Response(

@@ -85,7 +85,11 @@ def web(
 
     os.environ["SVG2DRAWIO_UI_DIR"] = str(ui_path.resolve())
 
-    url = f"http://{host}:{port}"
+    # Build URL for display and browser opening
+    # Use localhost for display if binding to 0.0.0.0 (all interfaces)
+    display_host = "localhost" if host == "0.0.0.0" else host  # nosec B104
+    url = f"http://{display_host}:{port}"
+
     console.print(f"[bold green]SVG2DrawIO Web UI[/bold green]  →  {url}")
     console.print(f"Serving UI from [dim]{ui_path.resolve()}[/dim]")
     console.print("Press [bold]Ctrl+C[/bold] to stop.\n")

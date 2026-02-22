@@ -242,6 +242,27 @@ class TestRenameEndpoint:
         assert "renamed-icon" in content
         assert "test-icon" not in content or content.count("test-icon") == 0
 
+    def test_rename_icon_conflict_returns_409(self, simple_svg: bytes) -> None:
+        """Test that renaming to existing name returns 409 (Bug #13)."""
+        # Create a library with two icons
+        files = [
+            ("svg_files", ("icon1.svg", io.BytesIO(simple_svg), "image/svg+xml")),
+            ("svg_files", ("icon2.svg", io.BytesIO(simple_svg), "image/svg+xml")),
+        ]
+        create_response = client.post("/api/create", files=files)
+        assert create_response.status_code == 200
+
+        # Try to rename icon1 to icon2 without overwrite
+        lib_content = create_response.content
+        with io.BytesIO(lib_content) as lib_f:
+            files = [("library_file", ("library.xml", lib_f, "application/xml"))]
+            data = {"old_name": "icon1", "new_name": "icon2", "overwrite": "false"}
+            response = client.post("/api/rename", files=files, data=data)
+
+        # Should return 409 Conflict, not 400
+        assert response.status_code == 409
+        assert "already exists" in response.json()["detail"]
+
 
 class TestExtractEndpoint:
     """Tests for extract icons endpoint."""

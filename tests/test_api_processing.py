@@ -124,37 +124,6 @@ class TestSanitizeSvgUpload:
         assert b"viewBox" in result
         assert b"fill" in result
 
-
-class TestBuildProcessingOptions:
-    """Tests for building SVG processing options."""
-
-    def test_default_options(self) -> None:
-        """Test default processing options."""
-        options = build_processing_options()
-        assert options.add_css is False
-        assert options.css_mode == "fill"
-        assert options.css_color == "#000000"
-        assert options.css_stroke_color == "#000000"
-        assert options.preserve_current_color is True
-        assert options.css_tag == "path"
-
-    def test_custom_options(self) -> None:
-        """Test custom processing options."""
-        options = build_processing_options(
-            add_css=True,
-            css_mode="stroke",
-            css_color="#ff0000",
-            css_stroke_color="#00ff00",
-            preserve_current_color=False,
-            css_tag="circle",
-        )
-        assert options.add_css is True
-        assert options.css_mode == "stroke"
-        assert options.css_color == "#ff0000"
-        assert options.css_stroke_color == "#00ff00"
-        assert options.preserve_current_color is False
-        assert options.css_tag == "circle"
-
     def test_strips_javascript_uri_with_leading_whitespace(self) -> None:
         """Test that javascript: URIs with leading whitespace are stripped (Bug #8)."""
         # Test with space
@@ -196,3 +165,34 @@ class TestBuildProcessingOptions:
             sanitize_svg_upload(non_svg)
         assert exc_info.value.status_code == 422
         assert "does not appear to be an SVG" in exc_info.value.detail
+
+
+class TestBuildProcessingOptions:
+    """Tests for building SVG processing options."""
+
+    def test_default_options(self) -> None:
+        """Test default processing options."""
+        options = build_processing_options()
+        assert options.add_css is False
+        assert options.css_mode == "fill"
+        assert options.css_color == "#000000"
+        assert options.css_stroke_color == "#000000"
+        assert options.preserve_current_color is True
+        assert options.css_tag == "path"
+
+    def test_custom_options(self) -> None:
+        """Test custom processing options."""
+        options = build_processing_options(
+            add_css=True,
+            css_mode="stroke",
+            css_color="#ff0000",
+            css_stroke_color="#00ff00",
+            preserve_current_color=False,
+            css_tag="circle",
+        )
+        assert options.add_css is True
+        assert options.css_mode == "stroke"
+        assert options.css_color == "#ff0000"
+        assert options.css_stroke_color == "#00ff00"
+        assert options.preserve_current_color is False
+        assert options.css_tag == "circle"

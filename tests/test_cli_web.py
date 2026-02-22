@@ -263,3 +263,35 @@ class TestWebCommand:
             mock_sleep.assert_called_once_with(1.2)
             # Verify webbrowser.open was called
             mock_webbrowser.open.assert_called_once_with("http://localhost:8000")
+
+    @patch("SVG2DrawIOLib.cli.web.threading.Thread")
+    @patch("SVG2DrawIOLib.cli.web.webbrowser")
+    def test_web_uses_localhost_for_wildcard_host(
+        self, mock_webbrowser: Mock, mock_thread: Mock, runner: CliRunner, mock_ui_dir: Path
+    ) -> None:
+        """Test that 0.0.0.0 host displays as localhost in URL (Bug #15)."""
+        mock_uvicorn = MagicMock()
+
+        # Track if the thread function was called
+        thread_target = None
+
+        def capture_thread(*args: object, **kwargs: object) -> Mock:
+            nonlocal thread_target
+            thread_target = kwargs.get("target")
+            mock_thread_obj = MagicMock()
+            # Actually call the target function to test webbrowser.open
+            if thread_target and callable(thread_target):
+                thread_target()
+            return mock_thread_obj
+
+        with (
+            patch("SVG2DrawIOLib.cli.web.threading.Thread", side_effect=capture_thread),
+            patch.dict("sys.modules", {"uvicorn": mock_uvicorn}),
+        ):
+            result = runner.invoke(web, ["--host", "0.0.0.0", "--ui-dir", str(mock_ui_dir)])
+            assert result.exit_code == 0
+            # Should display localhost in output, not 0.0.0.0
+            assert "http://localhost:8000" in result.output
+            assert "http://0.0.0.0" not in result.output
+            # Browser should open localhost URL
+            mock_webbrowser.open.assert_called_once_with("http://localhost:8000")

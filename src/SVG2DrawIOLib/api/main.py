@@ -10,6 +10,8 @@ from fastapi.staticfiles import StaticFiles
 
 from SVG2DrawIOLib.__about__ import __version__
 from SVG2DrawIOLib.api.exceptions import (
+    ConflictError,
+    conflict_error_handler,
     file_not_found_handler,
     import_error_handler,
     parse_error_handler,
@@ -48,6 +50,7 @@ app.add_middleware(
 
 # Exception handlers
 app.add_exception_handler(FileNotFoundError, file_not_found_handler)  # type: ignore[arg-type]
+app.add_exception_handler(ConflictError, conflict_error_handler)  # type: ignore[arg-type]
 app.add_exception_handler(ValueError, value_error_handler)  # type: ignore[arg-type]
 app.add_exception_handler(ET.ParseError, parse_error_handler)  # type: ignore[arg-type]
 app.add_exception_handler(ImportError, import_error_handler)  # type: ignore[arg-type]
