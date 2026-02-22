@@ -81,6 +81,22 @@ class TestCreateEndpoint:
         # Check that we have 3 separate icon entries
         assert content.count('"title"') == 3  # Each icon should have a title field
 
+    def test_create_library_sanitized_duplicate_filenames(self, simple_svg: bytes) -> None:
+        """Test that filenames that sanitize to the same name are deduplicated (Bug #22)."""
+        # These filenames sanitize to the same value: icon_1_.svg
+        files = [
+            ("svg_files", ("icon<1>.svg", io.BytesIO(simple_svg), "image/svg+xml")),
+            ("svg_files", ("icon_1_.svg", io.BytesIO(simple_svg), "image/svg+xml")),
+        ]
+        response = client.post("/api/create", files=files)
+        assert response.status_code == 200
+        content = response.content.decode()
+        # Should have 2 icons with different names (deduplication should add suffix)
+        assert content.count('"title"') == 2
+        # Both sanitized names should be present (one with suffix)
+        assert "icon_1_" in content
+        assert "icon_1_-1" in content or "icon_1_-2" in content
+
     def test_create_library_strips_dangerous_content(self) -> None:
         """Test that dangerous SVG content is stripped."""
         dangerous_svg = b'<svg xmlns="http://www.w3.org/2000/svg"><script>alert("xss")</script><rect width="50" height="50"/></svg>'
@@ -187,6 +203,24 @@ class TestAddEndpoint:
         # Should have 3 icons total (1 original + 2 new) - response is XML not JSON
         content = response.content.decode()
         assert content.count('"title"') == 3
+
+    def test_add_icons_sanitized_duplicate_filenames(
+        self, simple_library: Path, simple_svg: bytes
+    ) -> None:
+        """Test that filenames that sanitize to the same name are deduplicated (Bug #22)."""
+        with open(simple_library, "rb") as lib_f:
+            files = [
+                ("library_file", ("test.xml", lib_f, "application/xml")),
+                ("svg_files", ("icon<1>.svg", io.BytesIO(simple_svg), "image/svg+xml")),
+                ("svg_files", ("icon_1_.svg", io.BytesIO(simple_svg), "image/svg+xml")),
+            ]
+            response = client.post("/api/add", files=files)  # type: ignore[arg-type]  # httpx type variance
+        assert response.status_code == 200
+        content = response.content.decode()
+        # Should have 3 icons total (1 original + 2 new with deduplication)
+        assert content.count('"title"') == 3
+        # Both sanitized names should be present (one with suffix)
+        assert "icon_1_" in content
 
     def test_add_icons_with_uppercase_extension(
         self, simple_library: Path, simple_svg: bytes

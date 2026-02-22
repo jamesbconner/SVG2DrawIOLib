@@ -169,11 +169,11 @@ async def process_svg_uploads(
         List of paths to saved SVG files.
     """
     # Import here to avoid circular dependency at module level
-    from SVG2DrawIOLib.cli.helpers import safe_path_join
+    from SVG2DrawIOLib.cli.helpers import safe_path_join, sanitize_filename
 
     svg_dir.mkdir(exist_ok=True)
 
-    # Track filenames to detect duplicates
+    # Track sanitized filenames to detect duplicates
     seen_filenames: set[str] = set()
     saved_paths: list[Path] = []
 
@@ -183,11 +183,13 @@ async def process_svg_uploads(
 
         # Generate unique filename if duplicate or missing
         base_filename = upload.filename or f"upload-{i}.svg"
-        filename = base_filename
+        # Sanitize the filename first to match what safe_path_join will use
+        sanitized_base = sanitize_filename(base_filename) or f"upload-{i}.svg"
+        filename = sanitized_base
         counter = 1
         while filename in seen_filenames:
-            stem = base_filename.rsplit(".", 1)[0] if "." in base_filename else base_filename
-            ext = base_filename.rsplit(".", 1)[1] if "." in base_filename else "svg"
+            stem = sanitized_base.rsplit(".", 1)[0] if "." in sanitized_base else sanitized_base
+            ext = sanitized_base.rsplit(".", 1)[1] if "." in sanitized_base else "svg"
             filename = f"{stem}-{counter}.{ext}"
             counter += 1
         seen_filenames.add(filename)
