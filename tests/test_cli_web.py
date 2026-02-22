@@ -1,8 +1,6 @@
 """Tests for the web CLI command."""
 
 import os
-import sys
-import threading
 from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 
@@ -73,7 +71,16 @@ class TestWebCommand:
         mock_uvicorn = MagicMock()
         with patch.dict("sys.modules", {"uvicorn": mock_uvicorn}):
             result = runner.invoke(
-                web, ["--host", "0.0.0.0", "--port", "9000", "--ui-dir", str(mock_ui_dir), "--no-browser"]
+                web,
+                [
+                    "--host",
+                    "0.0.0.0",
+                    "--port",
+                    "9000",
+                    "--ui-dir",
+                    str(mock_ui_dir),
+                    "--no-browser",
+                ],
             )
             assert result.exit_code == 0
             call_kwargs = mock_uvicorn.run.call_args[1]
@@ -81,9 +88,7 @@ class TestWebCommand:
             assert call_kwargs["port"] == 9000
 
     @patch("SVG2DrawIOLib.cli.web.threading.Thread")
-    def test_web_verbose(
-        self, mock_thread: Mock, runner: CliRunner, mock_ui_dir: Path
-    ) -> None:
+    def test_web_verbose(self, mock_thread: Mock, runner: CliRunner, mock_ui_dir: Path) -> None:
         """Test web command with verbose logging."""
         mock_uvicorn = MagicMock()
         with patch.dict("sys.modules", {"uvicorn": mock_uvicorn}):
@@ -93,9 +98,7 @@ class TestWebCommand:
             assert call_kwargs["log_level"] == "debug"
 
     @patch("SVG2DrawIOLib.cli.web.threading.Thread")
-    def test_web_quiet(
-        self, mock_thread: Mock, runner: CliRunner, mock_ui_dir: Path
-    ) -> None:
+    def test_web_quiet(self, mock_thread: Mock, runner: CliRunner, mock_ui_dir: Path) -> None:
         """Test web command with quiet logging."""
         mock_uvicorn = MagicMock()
         with patch.dict("sys.modules", {"uvicorn": mock_uvicorn}):
@@ -140,7 +143,7 @@ class TestWebCommand:
         """Test that SVG2DRAWIO_UI_DIR environment variable is set."""
         # Clear any existing env var
         os.environ.pop("SVG2DRAWIO_UI_DIR", None)
-        
+
         mock_uvicorn = MagicMock()
         with patch.dict("sys.modules", {"uvicorn": mock_uvicorn}):
             result = runner.invoke(web, ["--ui-dir", str(mock_ui_dir), "--no-browser"])
@@ -170,7 +173,16 @@ class TestWebCommand:
         mock_uvicorn = MagicMock()
         with patch.dict("sys.modules", {"uvicorn": mock_uvicorn}):
             result = runner.invoke(
-                web, ["--host", "127.0.0.1", "--port", "3000", "--ui-dir", str(mock_ui_dir), "--no-browser"]
+                web,
+                [
+                    "--host",
+                    "127.0.0.1",
+                    "--port",
+                    "3000",
+                    "--ui-dir",
+                    str(mock_ui_dir),
+                    "--no-browser",
+                ],
             )
             assert result.exit_code == 0
             assert "http://127.0.0.1:3000" in result.output
@@ -184,13 +196,13 @@ class TestWebCommand:
         """Test that bundled UI is used when available."""
         # Clear any existing env var
         os.environ.pop("SVG2DRAWIO_UI_DIR", None)
-        
+
         # Make bundled UI appear to exist
         with patch("pathlib.Path.is_dir") as mock_is_dir:
             # First call checks _BUNDLED_UI.is_dir() -> True
             # Second call checks ui_path.is_dir() -> True
             mock_is_dir.side_effect = [True, True]
-            
+
             mock_uvicorn = MagicMock()
             with patch.dict("sys.modules", {"uvicorn": mock_uvicorn}):
                 result = runner.invoke(web, ["--no-browser"])
@@ -206,16 +218,16 @@ class TestWebCommand:
         """Test that dev UI is used when bundled UI is not available."""
         # Clear any existing env var
         os.environ.pop("SVG2DRAWIO_UI_DIR", None)
-        
+
         dev_ui = tmp_path / "dev-ui"
         dev_ui.mkdir()
         mock_dev_ui.return_value = dev_ui
-        
+
         with patch("pathlib.Path.is_dir") as mock_is_dir:
             # First call checks _BUNDLED_UI.is_dir() -> False
             # Second call checks _DEV_UI.is_dir() -> True
             mock_is_dir.side_effect = [False, True]
-            
+
             mock_uvicorn = MagicMock()
             with patch.dict("sys.modules", {"uvicorn": mock_uvicorn}):
                 result = runner.invoke(web, ["--no-browser"])
@@ -228,26 +240,26 @@ class TestWebCommand:
     ) -> None:
         """Test that browser opens with a delay when not using --no-browser."""
         mock_uvicorn = MagicMock()
-        
+
         # Track if the thread function was called
         thread_target = None
-        original_thread = threading.Thread
-        
+
         def capture_thread(*args: object, **kwargs: object) -> Mock:
             nonlocal thread_target
             thread_target = kwargs.get("target")
             mock_thread = MagicMock()
             # Actually call the target function to test webbrowser.open
-            if thread_target:
+            if thread_target and callable(thread_target):
                 thread_target()
             return mock_thread
-        
-        with patch("SVG2DrawIOLib.cli.web.threading.Thread", side_effect=capture_thread):
-            with patch.dict("sys.modules", {"uvicorn": mock_uvicorn}):
-                result = runner.invoke(web, ["--ui-dir", str(mock_ui_dir)])
-                assert result.exit_code == 0
-                # Verify sleep was called with 1.2 seconds
-                mock_sleep.assert_called_once_with(1.2)
-                # Verify webbrowser.open was called
-                mock_webbrowser.open.assert_called_once_with("http://localhost:8000")
 
+        with (
+            patch("SVG2DrawIOLib.cli.web.threading.Thread", side_effect=capture_thread),
+            patch.dict("sys.modules", {"uvicorn": mock_uvicorn}),
+        ):
+            result = runner.invoke(web, ["--ui-dir", str(mock_ui_dir)])
+            assert result.exit_code == 0
+            # Verify sleep was called with 1.2 seconds
+            mock_sleep.assert_called_once_with(1.2)
+            # Verify webbrowser.open was called
+            mock_webbrowser.open.assert_called_once_with("http://localhost:8000")

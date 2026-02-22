@@ -123,7 +123,7 @@ class TestValidateEndpoint:
         files = [("svg_files", ("icon.svg", io.BytesIO(simple_svg), "image/svg+xml"))]
         create_response = client.post("/api/create", files=files)
         assert create_response.status_code == 200
-        
+
         # Now validate it
         lib_content = create_response.content
         files = [("library_file", ("test.xml", io.BytesIO(lib_content), "application/xml"))]
@@ -223,7 +223,7 @@ class TestExtractEndpoint:
         files = [("svg_files", ("test-icon.svg", io.BytesIO(simple_svg), "image/svg+xml"))]
         create_response = client.post("/api/create", files=files)
         assert create_response.status_code == 200
-        
+
         # Now extract from it
         lib_content = create_response.content
         files = [("library_file", ("test.xml", io.BytesIO(lib_content), "application/xml"))]
@@ -232,6 +232,7 @@ class TestExtractEndpoint:
         assert response.headers["content-type"] == "application/zip"
         # Verify it's a valid ZIP
         import zipfile
+
         zip_data = io.BytesIO(response.content)
         with zipfile.ZipFile(zip_data, "r") as zf:
             assert len(zf.namelist()) == 1
@@ -243,7 +244,7 @@ class TestExtractEndpoint:
         files = [("svg_files", ("test-icon.svg", io.BytesIO(simple_svg), "image/svg+xml"))]
         create_response = client.post("/api/create", files=files)
         assert create_response.status_code == 200
-        
+
         # Now extract specific icon
         lib_content = create_response.content
         files = [("library_file", ("test.xml", io.BytesIO(lib_content), "application/xml"))]
@@ -277,7 +278,9 @@ class TestSplitPathsEndpoint:
 
     def test_split_paths(self) -> None:
         """Test splitting compound SVG paths."""
-        svg_with_compound_path = b'<svg xmlns="http://www.w3.org/2000/svg"><path d="M0,0 L10,10 M20,20 L30,30"/></svg>'
+        svg_with_compound_path = (
+            b'<svg xmlns="http://www.w3.org/2000/svg"><path d="M0,0 L10,10 M20,20 L30,30"/></svg>'
+        )
         files = [("svg_file", ("test.svg", io.BytesIO(svg_with_compound_path), "image/svg+xml"))]
         response = client.post("/api/split-paths", files=files)
         assert response.status_code == 200

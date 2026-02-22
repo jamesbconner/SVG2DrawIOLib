@@ -54,7 +54,7 @@ class TestSanitizeSvgUpload:
 
     def test_strips_foreign_object(self) -> None:
         """Test that <foreignObject> elements are removed."""
-        svg = b'<svg><foreignObject><div>html</div></foreignObject><rect/></svg>'
+        svg = b"<svg><foreignObject><div>html</div></foreignObject><rect/></svg>"
         result = sanitize_svg_upload(svg)
         assert b"foreignObject" not in result
         assert b"<rect" in result
@@ -100,7 +100,7 @@ class TestSanitizeSvgUpload:
 
     def test_nested_dangerous_elements(self) -> None:
         """Test that nested dangerous elements are removed."""
-        svg = b'<svg><g><script>alert(1)</script><rect/></g></svg>'
+        svg = b"<svg><g><script>alert(1)</script><rect/></g></svg>"
         result = sanitize_svg_upload(svg)
         assert b"<script" not in result
         assert b"alert" not in result
@@ -154,7 +154,6 @@ class TestBuildProcessingOptions:
         assert options.css_stroke_color == "#00ff00"
         assert options.preserve_current_color is False
         assert options.css_tag == "circle"
-
 
     def test_strips_javascript_uri_with_leading_whitespace(self) -> None:
         """Test that javascript: URIs with leading whitespace are stripped (Bug #8)."""
