@@ -10,9 +10,10 @@ from SVG2DrawIOLib.models import SVGProcessingOptions
 MAX_SVG_SIZE_BYTES = 10 * 1024 * 1024  # 10 MB
 
 # SVG elements and attributes that are potentially dangerous
+# Element names are stored in lowercase for case-insensitive matching
 _DANGEROUS_ELEMENTS = {
     "script",
-    "foreignObject",
+    "foreignobject",
 }
 
 _EVENT_HANDLER_PREFIX = "on"  # onclick, onload, onerror, etc.
@@ -109,7 +110,7 @@ def _strip_dangerous_content(element: ET.Element) -> None:
     to_remove = []
     for child in element:
         local_tag = child.tag.split("}")[-1] if "}" in child.tag else child.tag
-        if local_tag in _DANGEROUS_ELEMENTS:
+        if local_tag.lower() in _DANGEROUS_ELEMENTS:
             to_remove.append(child)
             continue
 

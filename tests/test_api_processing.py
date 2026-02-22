@@ -59,6 +59,46 @@ class TestSanitizeSvgUpload:
         assert b"foreignObject" not in result
         assert b"<rect" in result
 
+    def test_strips_case_variant_script_elements(self) -> None:
+        """Test that case-variant <script> elements are removed (Bug #28)."""
+        # Test uppercase
+        svg = b'<svg><SCRIPT>alert("xss")</SCRIPT><rect/></svg>'
+        result = sanitize_svg_upload(svg)
+        result_str = result.decode("utf-8")
+        assert "script" not in result_str.lower()
+        assert "alert" not in result_str
+        assert "<rect" in result_str
+
+        # Test mixed case
+        svg = b'<svg><ScRiPt>alert("xss")</ScRiPt><rect/></svg>'
+        result = sanitize_svg_upload(svg)
+        result_str = result.decode("utf-8")
+        assert "script" not in result_str.lower()
+        assert "alert" not in result_str
+
+        # Test with namespace
+        svg = b'<svg xmlns="http://www.w3.org/2000/svg"><Script>alert("xss")</Script><rect/></svg>'
+        result = sanitize_svg_upload(svg)
+        result_str = result.decode("utf-8")
+        assert "script" not in result_str.lower()
+        assert "alert" not in result_str
+
+    def test_strips_case_variant_foreign_object(self) -> None:
+        """Test that case-variant <foreignObject> elements are removed (Bug #28)."""
+        # Test uppercase
+        svg = b"<svg><FOREIGNOBJECT><div>html</div></FOREIGNOBJECT><rect/></svg>"
+        result = sanitize_svg_upload(svg)
+        result_str = result.decode("utf-8")
+        assert "foreignobject" not in result_str.lower()
+        assert "<rect" in result_str
+
+        # Test mixed case
+        svg = b"<svg><ForeignObject><div>html</div></ForeignObject><rect/></svg>"
+        result = sanitize_svg_upload(svg)
+        result_str = result.decode("utf-8")
+        assert "foreignobject" not in result_str.lower()
+        assert "<rect" in result_str
+
     def test_strips_event_handlers(self) -> None:
         """Test that event handler attributes are removed."""
         svg = b'<svg><rect onclick="alert(1)" onload="alert(2)" width="10"/></svg>'
