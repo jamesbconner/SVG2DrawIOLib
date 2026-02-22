@@ -260,6 +260,35 @@ class TestRemoveEndpoint:
             response = client.post("/api/remove", files=files, data=data)
         assert response.status_code == 422
 
+    def test_remove_non_list_json(self, simple_library: Path) -> None:
+        """Test that non-list JSON is rejected (Bug #23)."""
+        with open(simple_library, "rb") as f:
+            files = [("library_file", ("test.xml", f, "application/xml"))]
+            # Test with string
+            data = {"icon_names": json.dumps("test-icon")}
+            response = client.post("/api/remove", files=files, data=data)
+        assert response.status_code == 422
+        assert "must be a JSON array" in response.json()["detail"]
+        assert "str" in response.json()["detail"]
+
+        with open(simple_library, "rb") as f:
+            files = [("library_file", ("test.xml", f, "application/xml"))]
+            # Test with number
+            data = {"icon_names": json.dumps(123)}
+            response = client.post("/api/remove", files=files, data=data)
+        assert response.status_code == 422
+        assert "must be a JSON array" in response.json()["detail"]
+        assert "int" in response.json()["detail"]
+
+        with open(simple_library, "rb") as f:
+            files = [("library_file", ("test.xml", f, "application/xml"))]
+            # Test with object
+            data = {"icon_names": json.dumps({"name": "test"})}
+            response = client.post("/api/remove", files=files, data=data)
+        assert response.status_code == 422
+        assert "must be a JSON array" in response.json()["detail"]
+        assert "dict" in response.json()["detail"]
+
 
 class TestRenameEndpoint:
     """Tests for rename icon endpoint."""
@@ -336,6 +365,22 @@ class TestExtractEndpoint:
         response = client.post("/api/extract", files=files, data=data)
         assert response.status_code == 200
 
+    def test_extract_non_list_json(self, simple_svg: bytes) -> None:
+        """Test that non-list JSON is rejected (Bug #23)."""
+        # Create a library via the API first
+        files = [("svg_files", ("test-icon.svg", io.BytesIO(simple_svg), "image/svg+xml"))]
+        create_response = client.post("/api/create", files=files)
+        assert create_response.status_code == 200
+
+        lib_content = create_response.content
+        files = [("library_file", ("test.xml", io.BytesIO(lib_content), "application/xml"))]
+        # Test with string instead of list
+        data = {"icon_names": json.dumps("test-icon")}
+        response = client.post("/api/extract", files=files, data=data)
+        assert response.status_code == 422
+        assert "must be a JSON array" in response.json()["detail"]
+        assert "str" in response.json()["detail"]
+
 
 class TestInspectEndpoint:
     """Tests for inspect icons endpoint."""
@@ -355,6 +400,17 @@ class TestInspectEndpoint:
         assert icon["name"] == "test-icon"
         assert icon["width"] == 100
         assert icon["height"] == 100
+
+    def test_inspect_non_list_json(self, simple_library: Path) -> None:
+        """Test that non-list JSON is rejected (Bug #23)."""
+        with open(simple_library, "rb") as f:
+            files = [("library_file", ("test.xml", f, "application/xml"))]
+            # Test with string instead of list
+            data = {"icon_names": json.dumps("test-icon")}
+            response = client.post("/api/inspect", files=files, data=data)
+        assert response.status_code == 422
+        assert "must be a JSON array" in response.json()["detail"]
+        assert "str" in response.json()["detail"]
 
 
 class TestSplitPathsEndpoint:

@@ -37,7 +37,13 @@ async def inspect_library(
         HTTPException: 422 if icon_names is not valid JSON.
     """
     try:
-        names: list[str] = json.loads(icon_names)
+        names_parsed = json.loads(icon_names)
+        if not isinstance(names_parsed, list):
+            raise HTTPException(
+                status_code=422,
+                detail=f"icon_names must be a JSON array, got {type(names_parsed).__name__}",
+            )
+        names: list[str] = names_parsed
     except json.JSONDecodeError as exc:
         raise HTTPException(
             status_code=422, detail=f"icon_names must be a JSON array: {exc}"

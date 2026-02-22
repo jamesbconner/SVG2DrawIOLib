@@ -32,6 +32,20 @@ jobs:
         with:
           python-version: "3.13"
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: web-ui/package-lock.json
+
+      - name: Install web UI dependencies
+        run: npm ci
+        working-directory: web-ui
+
+      - name: Build web UI and copy into package
+        run: make build-release
+
       - name: Install build dependencies
         run: |
           uv pip install --system twine
