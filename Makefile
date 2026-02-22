@@ -80,7 +80,7 @@ build-web: ## Build Next.js static export into web-ui/out/ (required before svg2
 	cd web-ui && npm run build
 
 build-release: build-web ## Build Next.js UI and copy into the Python package for distribution
-	uv run python -c "import shutil,pathlib; w=pathlib.Path('src/SVG2DrawIOLib/web'); shutil.rmtree(w,ignore_errors=True); shutil.copytree('web-ui/out',w); [(p.rename(p.parent.parent/(p.parent.name+'.__PAGE__.txt')),p.parent.rmdir()) for p in list(w.rglob('__PAGE__.txt')) if p.parent.name.startswith('__next.')]"
+	uv run python -c "import shutil,pathlib; w=pathlib.Path('src/SVG2DrawIOLib/web'); gitkeep=w/'.gitkeep'; gitkeep_content=gitkeep.read_text() if gitkeep.exists() else ''; shutil.rmtree(w,ignore_errors=True); shutil.copytree('web-ui/out',w); [(p.rename(p.parent.parent/(p.parent.name+'.__PAGE__.txt')),p.parent.rmdir()) for p in list(w.rglob('__PAGE__.txt')) if p.parent.name.startswith('__next.')]; w.mkdir(exist_ok=True); gitkeep.write_text(gitkeep_content) if gitkeep_content else None"
 
 start-web: build-web ## Build then launch the web UI via the CLI (opens browser)
 	svg2drawio web

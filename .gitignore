@@ -40,7 +40,8 @@ debug/
 /test_*.py
 
 # Bundled web UI (built artifact — not source)
-src/SVG2DrawIOLib/web/
+src/SVG2DrawIOLib/web/*
+!src/SVG2DrawIOLib/web/.gitkeep
 
 # web-ui (Next.js)
 web-ui/node_modules/

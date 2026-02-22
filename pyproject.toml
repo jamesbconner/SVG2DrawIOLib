@@ -92,6 +92,10 @@ include = [
 [tool.hatch.build.targets.sdist.force-include]
 "src/SVG2DrawIOLib/web" = "src/SVG2DrawIOLib/web"
 
+# Editable installs work without the web directory
+[tool.hatch.build.targets.editable]
+packages = ["src/SVG2DrawIOLib"]
+
 [tool.hatch.envs.default]
 dependencies = [
   "pytest>=8.0.0",
