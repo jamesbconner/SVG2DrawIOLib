@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Form, UploadFile
 from fastapi.responses import Response
 
 from SVG2DrawIOLib.api.dependencies import get_temp_dir
-from SVG2DrawIOLib.api.services.processing import build_processing_options, sanitize_svg_upload
+from SVG2DrawIOLib.api.services.processing import build_processing_options, process_svg_uploads
 from SVG2DrawIOLib.cli.create_helpers import determine_sizing_strategy, process_svg_files
 from SVG2DrawIOLib.cli.helpers import safe_path_join, sanitize_filename
 from SVG2DrawIOLib.library_manager import LibraryManager
@@ -56,28 +56,7 @@ async def add_icons(
     lib_path.write_bytes(await library_file.read())
 
     svg_dir = tmp / "svgs"
-    svg_dir.mkdir(exist_ok=True)
-
-    # Track filenames to detect duplicates
-    seen_filenames: set[str] = set()
-    for i, upload in enumerate(svg_files):
-        content = await upload.read()
-        sanitized_content = sanitize_svg_upload(content)
-
-        # Generate unique filename if duplicate or missing
-        base_filename = upload.filename or f"upload-{i}.svg"
-        filename = base_filename
-        counter = 1
-        while filename in seen_filenames:
-            stem = base_filename.rsplit(".", 1)[0] if "." in base_filename else base_filename
-            ext = base_filename.rsplit(".", 1)[1] if "." in base_filename else "svg"
-            filename = f"{stem}-{counter}.{ext}"
-            counter += 1
-        seen_filenames.add(filename)
-
-        dest = safe_path_join(svg_dir, filename)
-        dest.write_bytes(sanitized_content)
-
+    await process_svg_uploads(svg_files, svg_dir)
     svg_paths = list(svg_dir.glob("*.svg"))
 
     options = build_processing_options(

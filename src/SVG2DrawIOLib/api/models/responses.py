@@ -62,11 +62,3 @@ class InspectResponse(BaseModel):
 
     icons: list[IconInfo]
     count: int
-
-
-class SplitPathsStats(BaseModel):
-    """Statistics from a split-paths operation."""
-
-    paths_processed: int
-    subpaths_created: int
-    holes_preserved: int

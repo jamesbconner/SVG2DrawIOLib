@@ -1,8 +1,9 @@
 """Shared SVG processing logic for API endpoints."""
 
 import xml.etree.ElementTree as ET
+from pathlib import Path
 
-from fastapi import HTTPException
+from fastapi import HTTPException, UploadFile
 
 from SVG2DrawIOLib.models import SVGProcessingOptions
 
@@ -46,8 +47,8 @@ def sanitize_svg_upload(content: bytes) -> bytes:
         raise HTTPException(status_code=422, detail=f"Invalid SVG XML: {exc}") from exc
 
     # Validate root tag contains "svg"
-    tag_local = root.tag.lower()
-    if "svg" not in tag_local:
+    tag_local = root.tag.split("}")[-1] if "}" in root.tag else root.tag
+    if tag_local.lower() != "svg":
         raise HTTPException(
             status_code=422,
             detail=f"Uploaded file does not appear to be an SVG (root tag: {root.tag})",
@@ -79,7 +80,7 @@ def _strip_dangerous_content(element: ET.Element) -> None:
             local_attr = attr.split("}")[-1] if "}" in attr else attr
             if local_attr.lower().startswith(_EVENT_HANDLER_PREFIX) or (
                 local_attr.lower() in _JAVASCRIPT_URI_ATTRS
-                and value.lower().startswith("javascript:")
+                and value.strip().lower().startswith("javascript:")
             ):
                 attrs_to_remove.append(attr)
 
@@ -97,7 +98,8 @@ def _strip_dangerous_content(element: ET.Element) -> None:
     for attr, value in element.attrib.items():
         local_attr = attr.split("}")[-1] if "}" in attr else attr
         if local_attr.lower().startswith(_EVENT_HANDLER_PREFIX) or (
-            local_attr.lower() in _JAVASCRIPT_URI_ATTRS and value.lower().startswith("javascript:")
+            local_attr.lower() in _JAVASCRIPT_URI_ATTRS
+            and value.strip().lower().startswith("javascript:")
         ):
             attrs_to_remove.append(attr)
 
@@ -134,3 +136,47 @@ def build_processing_options(
         preserve_current_color=preserve_current_color,
         css_tag=css_tag,
     )
+
+
+async def process_svg_uploads(
+    svg_files: list[UploadFile],
+    svg_dir: Path,
+) -> list[Path]:
+    """Process and save uploaded SVG files with deduplication.
+
+    Args:
+        svg_files: List of uploaded SVG files.
+        svg_dir: Directory to save processed SVG files.
+
+    Returns:
+        List of paths to saved SVG files.
+    """
+    # Import here to avoid circular dependency at module level
+    from SVG2DrawIOLib.cli.helpers import safe_path_join
+
+    svg_dir.mkdir(exist_ok=True)
+
+    # Track filenames to detect duplicates
+    seen_filenames: set[str] = set()
+    saved_paths: list[Path] = []
+
+    for i, upload in enumerate(svg_files):
+        content = await upload.read()
+        sanitized_content = sanitize_svg_upload(content)
+
+        # Generate unique filename if duplicate or missing
+        base_filename = upload.filename or f"upload-{i}.svg"
+        filename = base_filename
+        counter = 1
+        while filename in seen_filenames:
+            stem = base_filename.rsplit(".", 1)[0] if "." in base_filename else base_filename
+            ext = base_filename.rsplit(".", 1)[1] if "." in base_filename else "svg"
+            filename = f"{stem}-{counter}.{ext}"
+            counter += 1
+        seen_filenames.add(filename)
+
+        dest = safe_path_join(svg_dir, filename)
+        dest.write_bytes(sanitized_content)
+        saved_paths.append(dest)
+
+    return saved_paths
