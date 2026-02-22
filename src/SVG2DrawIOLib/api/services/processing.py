@@ -255,3 +255,24 @@ async def process_svg_uploads(
         saved_paths.append(dest)
 
     return saved_paths
+
+
+def handle_library_value_error(exc: ValueError) -> None:
+    """Handle ValueError from library operations.
+
+    Converts library format/parsing errors to 422 responses.
+    Other ValueErrors are re-raised as 500 internal errors.
+
+    Args:
+        exc: The ValueError exception to handle.
+
+    Raises:
+        HTTPException: 422 if the error is a library format error.
+        ValueError: Re-raises the original exception for internal errors.
+    """
+    error_msg = str(exc)
+    # Library format/parsing errors should return 422
+    if "Invalid library" in error_msg:
+        raise HTTPException(status_code=422, detail=error_msg) from exc
+    # Otherwise, it's an internal error - let it propagate as 500
+    raise

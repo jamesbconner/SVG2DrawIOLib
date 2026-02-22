@@ -2,11 +2,11 @@
 
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, Form, UploadFile
 from fastapi.responses import Response
 
 from SVG2DrawIOLib.api.dependencies import get_temp_dir
-from SVG2DrawIOLib.api.services.processing import parse_icon_names
+from SVG2DrawIOLib.api.services.processing import handle_library_value_error, parse_icon_names
 from SVG2DrawIOLib.cli.helpers import safe_path_join, sanitize_filename
 from SVG2DrawIOLib.library_manager import LibraryManager
 
@@ -41,12 +41,7 @@ async def remove_icons(
     try:
         _, removed_count = LibraryManager().remove_icons_from_library(lib_path, names)
     except ValueError as exc:
-        error_msg = str(exc)
-        # Library format/parsing errors should return 422
-        if "Invalid library" in error_msg:
-            raise HTTPException(status_code=422, detail=error_msg) from exc
-        # Otherwise, it's an internal error - let it propagate as 500
-        raise
+        handle_library_value_error(exc)
 
     out_name = sanitize_filename(lib_path.stem) or "library"
     return Response(

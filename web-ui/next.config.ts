@@ -4,7 +4,8 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   // Produce a fully-static export in web-ui/out/ so FastAPI can serve it.
   // When NEXT_PUBLIC_API_URL is empty the frontend makes same-origin /api/* calls.
-  output: "export",
+  // Only set output: "export" in production to avoid warning about rewrites in dev mode.
+  output: process.env.NODE_ENV === "production" ? "export" : undefined,
   trailingSlash: true,
 };
 

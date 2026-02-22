@@ -4,11 +4,11 @@ import io
 import zipfile
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, Form, UploadFile
 from fastapi.responses import StreamingResponse
 
 from SVG2DrawIOLib.api.dependencies import get_temp_dir
-from SVG2DrawIOLib.api.services.processing import parse_icon_names
+from SVG2DrawIOLib.api.services.processing import handle_library_value_error, parse_icon_names
 from SVG2DrawIOLib.cli.helpers import safe_path_join
 from SVG2DrawIOLib.icon_analyzer import IconAnalyzer
 from SVG2DrawIOLib.library_manager import LibraryManager
@@ -44,12 +44,7 @@ async def extract_icons(
     try:
         icons = LibraryManager().load_library(lib_path)
     except ValueError as exc:
-        error_msg = str(exc)
-        # Library format/parsing errors should return 422
-        if "Invalid library" in error_msg:
-            raise HTTPException(status_code=422, detail=error_msg) from exc
-        # Otherwise, it's an internal error - let it propagate as 500
-        raise
+        handle_library_value_error(exc)
 
     analyzer = IconAnalyzer()
 
