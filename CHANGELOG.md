@@ -5,11 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.2] - 2026-02-22
+
+### Fixed
+
+- **Editable install compatibility**: Added `.gitkeep` placeholder file in `src/SVG2DrawIOLib/web/` directory to enable editable installs (`pip install -e .`) to work before the web UI is built. This fixes CI/CD workflows that install in editable mode for testing before building the web UI.
+- **Web UI packaging**: Fixed `pyproject.toml` hatchling configuration to properly include the web UI static files in the built wheel and sdist. Changed from `artifacts` to `force-include` configuration for both wheel and sdist targets. The web UI directory (`src/SVG2DrawIOLib/web/`) is now correctly included in PyPI releases, ensuring `pip install SVG2DrawIOLib[web]` followed by `svg2drawiolib web` works out of the box.
+
+### Changed
+
+- **`.gitignore`**: Updated web directory exclusion pattern to allow `.gitkeep` placeholder file while still ignoring all build artifacts.
+- **`Makefile`**: Updated `build-release` target to preserve `.gitkeep` file when copying web UI build artifacts.
+
 ## [1.3.1] - 2026-02-22
 
 ### Fixed
 
-- **Web UI packaging**: Fixed `pyproject.toml` hatchling configuration to properly include the web UI static files in the built wheel and sdist. Changed from `artifacts` to `force-include` configuration for both wheel and sdist targets. The web UI directory (`src/SVG2DrawIOLib/web/`) is now correctly included in PyPI releases, ensuring `pip install SVG2DrawIOLib[web]` followed by `svg2drawiolib web` works out of the box.
 - **Security: Data URI sanitization** (Bug #27): Updated SVG sanitization to only block dangerous data: URIs (`data:text/html`, `data:text/javascript`, `data:application/javascript`, `data:application/x-javascript`) while allowing safe image data: URIs (`data:image/png`, `data:image/jpeg`, `data:image/svg+xml`, etc.) for legitimate embedded images.
 - **Security: Case-insensitive element filtering** (Bug #28): Made dangerous element checking case-insensitive to prevent sanitization bypass via case variants like `<Script>`, `<SCRIPT>`, or `<ForeignObject>`. Updated `_DANGEROUS_ELEMENTS` set to store lowercase values and added `.lower()` call during comparison.
 - **API: Duplicate error handling** (Bug #29): Extracted duplicate library error handling logic into shared `handle_library_value_error()` helper function in `processing.py`. Updated five routers (`add`, `remove`, `list`, `extract`, `inspect`) to use the centralized helper, eliminating code duplication.
@@ -20,7 +31,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **`pyproject.toml`**: Updated hatchling build configuration to use `force-include` for web UI static files in both wheel and sdist targets, replacing the non-functional `artifacts` configuration. Added explicit `packages` declaration and sdist `include` list.
 - **Web UI default**: Changed "Inject CSS classes" checkbox default from `false` to `true` in both CreateTab and ManageTab components for better out-of-box experience.
 
 ## [1.3.0] - 2026-02-21

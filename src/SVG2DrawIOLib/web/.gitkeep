@@ -1,0 +1,2 @@
+# Placeholder for web UI build artifacts
+# The actual web UI is built from web-ui/ and copied here during release builds
