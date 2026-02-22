@@ -58,14 +58,18 @@ async def add_icons(
     svg_dir = tmp / "svgs"
     svg_paths = await process_svg_uploads(svg_files, svg_dir)
 
-    options = build_processing_options(
-        add_css=add_css,
-        css_mode=css_mode,
-        css_color=css_color,
-        css_stroke_color=css_stroke_color,
-        preserve_current_color=preserve_current_color,
-        css_tag=css_tag,
-    )
+    try:
+        options = build_processing_options(
+            add_css=add_css,
+            css_mode=css_mode,
+            css_color=css_color,
+            css_stroke_color=css_stroke_color,
+            preserve_current_color=preserve_current_color,
+            css_tag=css_tag,
+        )
+    except ValueError as exc:
+        # Invalid css_mode or other validation error
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     max_dim, _ = determine_sizing_strategy(width, height, max_size)
     new_icons = process_svg_files(svg_paths, options, width, height, max_dim)

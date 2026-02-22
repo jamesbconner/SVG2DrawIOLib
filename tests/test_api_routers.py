@@ -421,3 +421,31 @@ class TestErrorHandling:
 
         assert response.status_code == 400
         assert "cannot be empty" in response.json()["detail"]
+
+    def test_create_invalid_css_mode_returns_422(self, simple_svg: bytes) -> None:
+        """Test that create endpoint returns 422 for invalid css_mode (Bug #19)."""
+        files = [("svg_files", ("icon.svg", io.BytesIO(simple_svg), "image/svg+xml"))]
+        data = {"css_mode": "invalid"}
+        response = client.post("/api/create", files=files, data=data)
+
+        assert response.status_code == 422
+        detail = response.json()["detail"]
+        assert "Invalid css_mode" in detail
+        assert "fill" in detail and "stroke" in detail and "both" in detail
+
+    def test_add_invalid_css_mode_returns_422(
+        self, simple_library: Path, simple_svg: bytes
+    ) -> None:
+        """Test that add endpoint returns 422 for invalid css_mode (Bug #19)."""
+        with open(simple_library, "rb") as lib_f:
+            files = [
+                ("library_file", ("test.xml", lib_f, "application/xml")),
+                ("svg_files", ("icon.svg", io.BytesIO(simple_svg), "image/svg+xml")),
+            ]
+            data = {"css_mode": "invalid"}
+            response = client.post("/api/add", files=files, data=data)  # type: ignore[arg-type]
+
+        assert response.status_code == 422
+        detail = response.json()["detail"]
+        assert "Invalid css_mode" in detail
+        assert "fill" in detail and "stroke" in detail and "both" in detail
