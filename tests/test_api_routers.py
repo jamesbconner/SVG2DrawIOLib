@@ -97,6 +97,19 @@ class TestCreateEndpoint:
         response = client.post("/api/create", files=files, data=data)
         assert response.status_code == 200
 
+    def test_create_library_with_uppercase_extension(self, simple_svg: bytes) -> None:
+        """Test that files with uppercase .SVG extension are processed (Bug #12)."""
+        files = [
+            ("svg_files", ("icon1.svg", io.BytesIO(simple_svg), "image/svg+xml")),
+            ("svg_files", ("icon2.SVG", io.BytesIO(simple_svg), "image/svg+xml")),
+            ("svg_files", ("icon3.Svg", io.BytesIO(simple_svg), "image/svg+xml")),
+        ]
+        response = client.post("/api/create", files=files)
+        assert response.status_code == 200
+        # All 3 icons should be in the library
+        content = response.content.decode()
+        assert content.count('"title"') == 3
+
 
 class TestListEndpoint:
     """Tests for list icons endpoint."""
@@ -172,6 +185,22 @@ class TestAddEndpoint:
             response = client.post("/api/add", files=files)  # type: ignore[arg-type]  # httpx type variance
         assert response.status_code == 200
         # Should have 3 icons total (1 original + 2 new) - response is XML not JSON
+        content = response.content.decode()
+        assert content.count('"title"') == 3
+
+    def test_add_icons_with_uppercase_extension(
+        self, simple_library: Path, simple_svg: bytes
+    ) -> None:
+        """Test that files with uppercase .SVG extension are processed (Bug #12)."""
+        with open(simple_library, "rb") as lib_f:
+            files = [
+                ("library_file", ("test.xml", lib_f, "application/xml")),
+                ("svg_files", ("icon1.svg", io.BytesIO(simple_svg), "image/svg+xml")),
+                ("svg_files", ("icon2.SVG", io.BytesIO(simple_svg), "image/svg+xml")),
+            ]
+            response = client.post("/api/add", files=files)  # type: ignore[arg-type]  # httpx type variance
+        assert response.status_code == 200
+        # Should have 3 icons total (1 original + 2 new with different extensions)
         content = response.content.decode()
         assert content.count('"title"') == 3
 

@@ -49,8 +49,7 @@ async def create_library(
         FileResponse containing the generated .xml library file.
     """
     svg_dir = tmp / "svgs"
-    await process_svg_uploads(svg_files, svg_dir)
-    svg_paths = list(svg_dir.glob("*.svg"))
+    svg_paths = await process_svg_uploads(svg_files, svg_dir)
 
     options = build_processing_options(
         add_css=add_css,
