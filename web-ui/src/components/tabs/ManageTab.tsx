@@ -16,7 +16,7 @@ import type { ProcessingOptions, SizingOptions } from "@/lib/types";
 type SubTab = "add" | "remove" | "rename";
 
 const DEFAULT_OPTS: ProcessingOptions = {
-  add_css: false,
+  add_css: true,
   css_mode: "fill",
   css_color: "#000000",
   css_stroke_color: "#000000",
