@@ -22,11 +22,6 @@ async def conflict_error_handler(_request: Request, exc: ConflictError) -> JSONR
     return JSONResponse(status_code=409, content={"detail": str(exc)})
 
 
-async def value_error_handler(_request: Request, exc: ValueError) -> JSONResponse:
-    """Handle ValueError as HTTP 400."""
-    return JSONResponse(status_code=400, content={"detail": str(exc)})
-
-
 async def parse_error_handler(_request: Request, exc: ET.ParseError) -> JSONResponse:
     """Handle XML ParseError as HTTP 422."""
     return JSONResponse(status_code=422, content={"detail": f"Invalid XML: {exc}"})
