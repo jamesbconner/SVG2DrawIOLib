@@ -10,15 +10,13 @@ MAX_SVG_SIZE_BYTES = 10 * 1024 * 1024  # 10 MB
 
 # SVG elements and attributes that are potentially dangerous
 _DANGEROUS_ELEMENTS = {
-    "{http://www.w3.org/2000/svg}script",
-    "{http://www.w3.org/2000/svg}foreignObject",
     "script",
     "foreignObject",
 }
 
-_EVENT_HANDLER_PREFIXES = (
-    "on",  # onclick, onload, onerror, etc.
-)
+_EVENT_HANDLER_PREFIX = "on"  # onclick, onload, onerror, etc.
+
+_JAVASCRIPT_URI_ATTRS = {"href", "xlink:href", "src"}
 
 
 def sanitize_svg_upload(content: bytes) -> bytes:
@@ -71,7 +69,7 @@ def _strip_dangerous_content(element: ET.Element) -> None:
     to_remove = []
     for child in element:
         local_tag = child.tag.split("}")[-1] if "}" in child.tag else child.tag
-        if local_tag in ("script", "foreignObject"):
+        if local_tag in _DANGEROUS_ELEMENTS:
             to_remove.append(child)
             continue
 
@@ -80,8 +78,8 @@ def _strip_dangerous_content(element: ET.Element) -> None:
         for attr, value in child.attrib.items():
             local_attr = attr.split("}")[-1] if "}" in attr else attr
             if (
-                local_attr.lower().startswith("on")
-                or local_attr.lower() in ("href", "xlink:href", "src")
+                local_attr.lower().startswith(_EVENT_HANDLER_PREFIX)
+                or local_attr.lower() in _JAVASCRIPT_URI_ATTRS
                 and value.lower().startswith("javascript:")
             ):
                 attrs_to_remove.append(attr)
@@ -100,8 +98,8 @@ def _strip_dangerous_content(element: ET.Element) -> None:
     for attr, value in element.attrib.items():
         local_attr = attr.split("}")[-1] if "}" in attr else attr
         if (
-            local_attr.lower().startswith("on")
-            or local_attr.lower() in ("href", "xlink:href", "src")
+            local_attr.lower().startswith(_EVENT_HANDLER_PREFIX)
+            or local_attr.lower() in _JAVASCRIPT_URI_ATTRS
             and value.lower().startswith("javascript:")
         ):
             attrs_to_remove.append(attr)
