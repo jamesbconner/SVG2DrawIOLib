@@ -58,10 +58,24 @@ async def add_icons(
     svg_dir = tmp / "svgs"
     svg_dir.mkdir(exist_ok=True)
 
-    for upload in svg_files:
+    # Track filenames to detect duplicates
+    seen_filenames: set[str] = set()
+    for i, upload in enumerate(svg_files):
         content = await upload.read()
         sanitized_content = sanitize_svg_upload(content)
-        dest = safe_path_join(svg_dir, upload.filename or "upload.svg")
+
+        # Generate unique filename if duplicate or missing
+        base_filename = upload.filename or f"upload-{i}.svg"
+        filename = base_filename
+        counter = 1
+        while filename in seen_filenames:
+            stem = base_filename.rsplit(".", 1)[0] if "." in base_filename else base_filename
+            ext = base_filename.rsplit(".", 1)[1] if "." in base_filename else "svg"
+            filename = f"{stem}-{counter}.{ext}"
+            counter += 1
+        seen_filenames.add(filename)
+
+        dest = safe_path_join(svg_dir, filename)
         dest.write_bytes(sanitized_content)
 
     svg_paths = list(svg_dir.glob("*.svg"))

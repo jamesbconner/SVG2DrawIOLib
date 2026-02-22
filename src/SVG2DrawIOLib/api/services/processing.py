@@ -77,9 +77,8 @@ def _strip_dangerous_content(element: ET.Element) -> None:
         attrs_to_remove = []
         for attr, value in child.attrib.items():
             local_attr = attr.split("}")[-1] if "}" in attr else attr
-            if (
-                local_attr.lower().startswith(_EVENT_HANDLER_PREFIX)
-                or local_attr.lower() in _JAVASCRIPT_URI_ATTRS
+            if local_attr.lower().startswith(_EVENT_HANDLER_PREFIX) or (
+                local_attr.lower() in _JAVASCRIPT_URI_ATTRS
                 and value.lower().startswith("javascript:")
             ):
                 attrs_to_remove.append(attr)
@@ -97,10 +96,8 @@ def _strip_dangerous_content(element: ET.Element) -> None:
     attrs_to_remove = []
     for attr, value in element.attrib.items():
         local_attr = attr.split("}")[-1] if "}" in attr else attr
-        if (
-            local_attr.lower().startswith(_EVENT_HANDLER_PREFIX)
-            or local_attr.lower() in _JAVASCRIPT_URI_ATTRS
-            and value.lower().startswith("javascript:")
+        if local_attr.lower().startswith(_EVENT_HANDLER_PREFIX) or (
+            local_attr.lower() in _JAVASCRIPT_URI_ATTRS and value.lower().startswith("javascript:")
         ):
             attrs_to_remove.append(attr)
 
