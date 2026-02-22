@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.3] - 2026-02-22
+
+### Fixed
+
+- **PyPI wheel packaging**: Fixed duplicate `.gitkeep` file in wheel that caused PyPI upload rejection. Changed wheel build configuration to use `only-include` for Python files, preventing the `.gitkeep` placeholder from being included via the `packages` directive while still allowing it through `force-include`.
+
 ## [1.3.2] - 2026-02-22
 
 ### Fixed
