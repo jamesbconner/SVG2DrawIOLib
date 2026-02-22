@@ -360,7 +360,7 @@ class TestErrorHandling:
             files = [("library_file", ("library.xml", lib_f, "application/xml"))]
             # Try to add icons to this malformed library
             svg_files = [("svg_files", ("icon.svg", io.BytesIO(simple_svg), "image/svg+xml"))]
-            response = client.post("/api/add", files=files + svg_files)  # type: ignore[arg-type]  # httpx type variance
+            response = client.post("/api/add", files=files + svg_files)
 
         # Should return 422 (unprocessable entity) for library format errors
         assert response.status_code == 422
