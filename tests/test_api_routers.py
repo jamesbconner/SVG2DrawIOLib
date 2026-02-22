@@ -355,6 +355,19 @@ class TestRenameEndpoint:
         assert response.status_code == 409
         assert "already exists" in response.json()["detail"]
 
+    def test_rename_invalid_library_returns_422(self) -> None:
+        """Test that invalid library format returns 422 (Bug #32)."""
+        # Create an invalid library file
+        invalid_lib = b"<not-a-library>invalid</not-a-library>"
+        with io.BytesIO(invalid_lib) as lib_f:
+            files = [("library_file", ("library.xml", lib_f, "application/xml"))]
+            data = {"old_name": "test", "new_name": "renamed"}
+            response = client.post("/api/rename", files=files, data=data)
+
+        # Should return 422, not 500
+        assert response.status_code == 422
+        assert "Invalid library" in response.json()["detail"]
+
 
 class TestExtractEndpoint:
     """Tests for extract icons endpoint."""

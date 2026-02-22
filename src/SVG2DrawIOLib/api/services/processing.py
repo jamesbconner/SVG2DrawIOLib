@@ -2,6 +2,7 @@
 
 import xml.etree.ElementTree as ET
 from pathlib import Path
+from typing import NoReturn
 
 from fastapi import HTTPException, UploadFile
 
@@ -257,11 +258,13 @@ async def process_svg_uploads(
     return saved_paths
 
 
-def handle_library_value_error(exc: ValueError) -> None:
+def handle_library_value_error(exc: ValueError) -> NoReturn:
     """Handle ValueError from library operations.
 
     Converts library format/parsing errors to 422 responses.
     Other ValueErrors are re-raised as 500 internal errors.
+
+    This function always raises an exception and never returns.
 
     Args:
         exc: The ValueError exception to handle.

@@ -7,6 +7,7 @@ from fastapi.responses import Response
 
 from SVG2DrawIOLib.api.dependencies import get_temp_dir
 from SVG2DrawIOLib.api.exceptions import ConflictError
+from SVG2DrawIOLib.api.services.processing import handle_library_value_error
 from SVG2DrawIOLib.cli.helpers import safe_path_join, sanitize_filename
 from SVG2DrawIOLib.library_manager import LibraryManager
 
@@ -47,6 +48,9 @@ async def rename_icon(
         )
     except ValueError as exc:
         error_msg = str(exc)
+        # Check if this is a library format error
+        if "Invalid library" in error_msg:
+            handle_library_value_error(exc)
         # Check if this is a conflict error (icon already exists)
         if "already exists" in error_msg:
             raise ConflictError(error_msg) from exc
