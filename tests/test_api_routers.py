@@ -154,7 +154,7 @@ class TestAddEndpoint:
                 ("library_file", ("test.xml", lib_f, "application/xml")),
                 ("svg_files", ("new-icon.svg", io.BytesIO(simple_svg), "image/svg+xml")),
             ]
-            response = client.post("/api/add", files=files)
+            response = client.post("/api/add", files=files)  # type: ignore[arg-type]  # httpx type variance
         assert response.status_code == 200
         assert b"<mxlibrary>" in response.content
         # Should have 2 icons now - response is XML not JSON
@@ -169,7 +169,7 @@ class TestAddEndpoint:
                 ("svg_files", ("icon.svg", io.BytesIO(simple_svg), "image/svg+xml")),
                 ("svg_files", ("icon.svg", io.BytesIO(simple_svg), "image/svg+xml")),
             ]
-            response = client.post("/api/add", files=files)
+            response = client.post("/api/add", files=files)  # type: ignore[arg-type]  # httpx type variance
         assert response.status_code == 200
         # Should have 3 icons total (1 original + 2 new) - response is XML not JSON
         content = response.content.decode()

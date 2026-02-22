@@ -27,7 +27,7 @@ repos:
           - pytest
           - pydantic
           - fastapi
-        args: [--strict]
+        args: [--strict, --no-warn-unused-ignores]
         files: ^(src|tests)/
 
   - repo: https://github.com/PyCQA/bandit
