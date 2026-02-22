@@ -38,7 +38,7 @@ export function NavBar() {
         }}
       >
         <Link
-          href="/create"
+          href="https://github.com/jamesbconner/SVG2DrawIOLib"
           style={{
             fontWeight: 700,
             fontSize: "1rem",
@@ -48,7 +48,7 @@ export function NavBar() {
             whiteSpace: "nowrap",
           }}
         >
-          SVG2DrawIO
+          SVG2DrawIOLib
         </Link>
 
         <div style={{ display: "flex", gap: "0.25rem", flex: 1, overflowX: "auto" }}>
