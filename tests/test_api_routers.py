@@ -539,3 +539,33 @@ class TestErrorHandling:
         detail = response.json()["detail"]
         assert "Invalid css_mode" in detail
         assert "fill" in detail and "stroke" in detail and "both" in detail
+
+    def test_create_partial_dimensions_returns_422(self, simple_svg: bytes) -> None:
+        """Test that create endpoint returns 422 for partial dimensions (Bug #24)."""
+        files = [("svg_files", ("icon.svg", io.BytesIO(simple_svg), "image/svg+xml"))]
+        # Test with only width
+        data = {"width": "100"}
+        response = client.post("/api/create", files=files, data=data)
+        assert response.status_code == 422
+        assert "Both width and height must be specified" in response.json()["detail"]
+
+        # Test with only height
+        data = {"height": "100"}
+        response = client.post("/api/create", files=files, data=data)
+        assert response.status_code == 422
+        assert "Both width and height must be specified" in response.json()["detail"]
+
+    def test_add_partial_dimensions_returns_422(
+        self, simple_library: Path, simple_svg: bytes
+    ) -> None:
+        """Test that add endpoint returns 422 for partial dimensions (Bug #24)."""
+        with open(simple_library, "rb") as lib_f:
+            files = [
+                ("library_file", ("test.xml", lib_f, "application/xml")),
+                ("svg_files", ("icon.svg", io.BytesIO(simple_svg), "image/svg+xml")),
+            ]
+            # Test with only width
+            data = {"width": "100"}
+            response = client.post("/api/add", files=files, data=data)  # type: ignore[arg-type]
+        assert response.status_code == 422
+        assert "Both width and height must be specified" in response.json()["detail"]

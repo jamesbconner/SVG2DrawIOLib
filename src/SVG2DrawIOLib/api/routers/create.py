@@ -64,7 +64,13 @@ async def create_library(
         # Invalid css_mode or other validation error
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
-    max_dim, _ = determine_sizing_strategy(width, height, max_size)
+    max_dim, has_warning = determine_sizing_strategy(width, height, max_size)
+    if has_warning:
+        raise HTTPException(
+            status_code=422,
+            detail="Both width and height must be specified together, or use max_size for proportional scaling",
+        )
+
     icons = process_svg_files(svg_paths, options, width, height, max_dim)
 
     out_name = sanitize_filename(output_name) or "library"

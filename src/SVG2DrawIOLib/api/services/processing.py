@@ -155,6 +155,34 @@ def build_processing_options(
     )
 
 
+def parse_icon_names(icon_names_json: str) -> list[str]:
+    """Parse and validate icon_names JSON parameter.
+
+    Args:
+        icon_names_json: JSON-encoded string that should contain a list of icon names.
+
+    Returns:
+        List of icon names.
+
+    Raises:
+        HTTPException: 422 if the JSON is invalid or not a list.
+    """
+    import json
+
+    try:
+        names_parsed = json.loads(icon_names_json)
+        if not isinstance(names_parsed, list):
+            raise HTTPException(
+                status_code=422,
+                detail=f"icon_names must be a JSON array, got {type(names_parsed).__name__}",
+            )
+        return names_parsed
+    except json.JSONDecodeError as exc:
+        raise HTTPException(
+            status_code=422, detail=f"icon_names must be a JSON array: {exc}"
+        ) from exc
+
+
 async def process_svg_uploads(
     svg_files: list[UploadFile],
     svg_dir: Path,

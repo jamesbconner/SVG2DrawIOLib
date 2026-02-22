@@ -1,12 +1,12 @@
 """Router for removing icons from a DrawIO library."""
 
-import json
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile
 from fastapi.responses import Response
 
 from SVG2DrawIOLib.api.dependencies import get_temp_dir
+from SVG2DrawIOLib.api.services.processing import parse_icon_names
 from SVG2DrawIOLib.cli.helpers import safe_path_join, sanitize_filename
 from SVG2DrawIOLib.library_manager import LibraryManager
 
@@ -33,18 +33,7 @@ async def remove_icons(
     Raises:
         HTTPException: 422 if icon_names is not valid JSON.
     """
-    try:
-        names_parsed = json.loads(icon_names)
-        if not isinstance(names_parsed, list):
-            raise HTTPException(
-                status_code=422,
-                detail=f"icon_names must be a JSON array, got {type(names_parsed).__name__}",
-            )
-        names: list[str] = names_parsed
-    except json.JSONDecodeError as exc:
-        raise HTTPException(
-            status_code=422, detail=f"icon_names must be a JSON array: {exc}"
-        ) from exc
+    names = parse_icon_names(icon_names)
 
     lib_path = safe_path_join(tmp, library_file.filename or "library.xml")
     lib_path.write_bytes(await library_file.read())
